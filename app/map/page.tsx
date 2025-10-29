@@ -7,6 +7,42 @@ import { MapPin, Loader2, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 
 export default function MapPage() {
+  // Show a Coming Soon page in production to avoid broken map UX
+  if (process.env.NODE_ENV === 'production') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Site Map</h1>
+            <p className="text-gray-600 mt-1">View all District 79 sites on a map</p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-8 border border-gray-200">
+            <div className="mx-auto mb-4 flex items-center justify-center h-16 w-16 rounded-full bg-yellow-100">
+              <MapPin className="h-8 w-8 text-yellow-600" />
+            </div>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Map Under Construction</h2>
+            <p className="text-gray-600 mb-6">
+              Our interactive map is coming soon. We’re working to bring you a fast and reliable
+              experience. In the meantime, please use the directory to browse sites.
+            </p>
+            <div className="flex items-center justify-center">
+              <Link
+                href="/"
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                Back to Directory
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <Footer />
+      </div>
+    );
+  }
+
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
