@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
+import { Analytics } from "@vercel/analytics/react";
 
 export const metadata: Metadata = {
   title: "District 79 Directory",
@@ -17,7 +18,7 @@ export default function RootLayout({
       <body className="antialiased bg-gray-50">
         <div className="flex flex-col min-h-screen">
           <Header />
-
+          <Analytics />
           {/* Main content */}
           <main className="flex-1">
             {children}
