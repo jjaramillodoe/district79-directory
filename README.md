@@ -97,4 +97,4 @@ This application is ready to deploy on Vercel. Make sure to:
 
 ## License
 
-MIT
+Private
