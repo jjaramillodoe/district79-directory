@@ -28,7 +28,11 @@ const RechartsPieChart = dynamic(() => Promise.resolve((props: any) => (
         cx="50%"
         cy="50%"
         labelLine={false}
-        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+        label={(props: any) => {
+          const percent = props.percent ?? 0;
+          const name = props.name ?? '';
+          return `${name}: ${(percent * 100).toFixed(0)}%`;
+        }}
         outerRadius={120}
         fill="#8884d8"
         dataKey="value"
@@ -79,7 +83,7 @@ export default function AnalyticsPage() {
   const adultEdSites = sites.filter(s => s.category === 'adult-ed').length;
   const youthSites = sites.filter(s => s.category === 'youth').length;
   const sitesWithCoordinates = sites.filter(s => s.latitude && s.longitude).length;
-  const openSites远处 = sites.filter(s => s.status === 'Open').length;
+  const openSites = sites.filter(s => s.status === 'Open').length;
   const closedSites = sites.filter(s => s.status === 'Closed').length;
 
   // Program distribution
@@ -140,14 +144,14 @@ export default function AnalyticsPage() {
                 <BarChart3 className="h-8 w-8 text-blue-600" />
                 Analytics Dashboard
               </h1>
- Suite              <p className="text-gray-600 mt-1">Insights and statistics about District 79 sites</p>
+              <p className="text-gray-600 mt-1">Insights and statistics about District 79 sites</p>
             </div>
             <a 
               href="/" 
               className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414  peripheral1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
               </svg>
               Back to Directory
             </a>

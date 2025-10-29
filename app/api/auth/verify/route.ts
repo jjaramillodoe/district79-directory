@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const token = request.cookies.get('admin_token')?.value;
+    const cookieStore = await cookies();
+    const token = cookieStore.get('admin_token')?.value;
     const jwtSecret = process.env.JWT_SECRET;
 
     if (!token || !jwtSecret) {

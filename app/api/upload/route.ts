@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     if (process.env.ENABLE_AUTO_GEOCODE === 'true') {
       // Geocode in background without blocking response
       Promise.all(
-        sitesWithoutGeocode.map(async (site, index) => {
+        sitesWithoutGeocode.map(async (site: any, index: number) => {
           if (site.buildingAddress) {
             // Add delay based on index for rate limiting
             await new Promise(resolve => setTimeout(resolve, index * 1100));
@@ -82,8 +82,10 @@ export async function POST(request: Request) {
             );
 
             if (geoResult.latitude && geoResult.longitude) {
+              const insertedIdsArray = Object.values(result.insertedIds);
+              const id = insertedIdsArray[index];
               await db.collection('sites').updateOne(
-                { _id: result.insertedIds[Object.keys(result.insertedIds)[index]] },
+                { _id: id },
                 {
                   $set: {
                     latitude: geoResult.latitude,
