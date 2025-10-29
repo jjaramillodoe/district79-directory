@@ -371,7 +371,8 @@ export default function AdminPage() {
       const teamMembers = [
         { title: 'Superintendent', name: 'Glenda Esperance' },
         { title: 'Deputy Superintendent', name: 'Jerry Brito' },
-        { title: 'Executive Director', name: 'Veronica Pichardo' }
+        { title: 'Executive Director', name: 'Veronica Pichardo' },
+        { title: 'Executive Director', name: 'Annette Knox' }
       ];
       
       teamMembers.forEach((member) => {

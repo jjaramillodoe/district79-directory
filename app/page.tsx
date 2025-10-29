@@ -219,7 +219,8 @@ export default function Home() {
       const teamMembers = [
         { title: 'Superintendent', name: 'Glenda Esperance' },
         { title: 'Deputy Superintendent', name: 'Jerry Brito' },
-        { title: 'Executive Director', name: 'Veronica Pichardo' }
+        { title: 'Executive Director', name: 'Veronica Pichardo' },
+        { title: 'Executive Director', name: 'Annette Knox' }
       ];
       
       teamMembers.forEach((member) => {
@@ -541,6 +542,17 @@ export default function Home() {
                 </div>
               </div>
             </div>
+            <div className="bg-white/10 rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all transform hover:scale-105">
+                <div className="text-center">
+                  <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-full w-24 h-24 mx-auto mb-4 flex items-center justify-center shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+                    </svg>
+                  </div>
+                  <p className="font-bold text-lg mb-1">Executive Director</p>
+                  <p className="text-blue-100 text-sm">Annette Knox</p>
+                </div>
+              </div>
           </div>
         </div>
         {/* Wave Divider */}
