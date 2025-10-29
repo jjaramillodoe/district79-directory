@@ -1,0 +1,80 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# local env files - NEVER COMMIT THESE!
+.env*.local
+.env
+.env.production
+.env.development
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# sensitive data files (CSV files with PII - uncomment if these should not be committed)
+# *.csv
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+.cache/
+
+# OS files
+Thumbs.db
+[Ee]thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# certificates and keys
+*.pem
+*.key
+*.crt
+*.cert
