@@ -2,8 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { Copy, Check } from 'lucide-react';
+import SiteCard from '@/components/SiteCard';
+import SitesTable from '@/components/SitesTable';
 import Footer from '@/components/Footer';
 import ChangeRequestModal from '@/components/ChangeRequestModal';
+import HeroSection from '@/components/HeroSection';
+import FeaturesAccordion from '@/components/FeaturesAccordion';
+import CopyEmailsButton from '@/components/CopyEmailsButton';
+import SearchFilters from '@/components/SearchFilters';
+import PdfExporter from '@/components/PdfExporter';
+import ExcelExporter from '@/components/ExcelExporter';
 
 interface Site {
   _id: string;
@@ -189,21 +197,6 @@ export default function Home() {
       doc.addImage(nycLogo, 'PNG', pageWidth - 60, startY, 40, 20);
       
       startY += 25;
-      
-      //doc.setFontSize(20);
-      //doc.setTextColor(37, 99, 235);
-      //doc.text('DISTRICT 79', pageWidth / 2 - 20, startY, { align: 'center' });
-      //startY += 8;
-      
-      //doc.setFontSize(14);
-      //doc.setTextColor(0, 0, 0);
-      //doc.text('Adult Education & Youth Programs Directory', pageWidth / 2, startY, { align: 'center' });
-      //startY += 8;
-      
-      //doc.setFontSize(10);
-      //doc.setTextColor(100, 100, 100);
-      //doc.text('New York City Department of Education', pageWidth / 2, startY, { align: 'center' });
-      //startY += 20;
       
       // Executive Team Section - Centered and Enhanced
       doc.setFontSize(13);
@@ -493,526 +486,66 @@ export default function Home() {
   return (
     <div className="bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Modern Hero Section */}
-      <section className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-        <div className="max-w-7xl mx-auto px-4 py-16 relative z-10">
-          <div className="text-center mb-12">
-            <h1 className="text-5xl font-extrabold mb-4 tracking-tight">District 79 Directory</h1>
-            <p className="text-blue-100 text-xl mb-2">Adult Education & Youth Programs</p>
-            <div className="inline-block mt-4 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-sm">
-              Serving students across New York City
-            </div>
-          </div>
-          
-          {/* Executive Team Section - Modern Cards */}
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 shadow-2xl">
-            <h2 className="text-2xl font-bold mb-6 text-center">Executive Leadership</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white/10 rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all transform hover:scale-105">
-                <div className="text-center">
-                  <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-full w-24 h-24 mx-auto mb-4 flex items-center justify-center shadow-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
-                    </svg>
-                  </div>
-                  <p className="font-bold text-lg mb-1">Superintendent</p>
-                  <p className="text-blue-100 text-sm">Glenda Esperance</p>
-                </div>
-              </div>
-              <div className="bg-white/10 rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all transform hover:scale-105">
-                <div className="text-center">
-                  <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-full w-24 h-24 mx-auto mb-4 flex items-center justify-center shadow-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
-                    </svg>
-                  </div>
-                  <p className="font-bold text-lg mb-1">Deputy Superintendent</p>
-                  <p className="text-blue-100 text-sm">Jerry Brito</p>
-                </div>
-              </div>
-              <div className="bg-white/10 rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all transform hover:scale-105">
-                <div className="text-center">
-                  <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-full w-24 h-24 mx-auto mb-4 flex items-center justify-center shadow-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
-                    </svg>
-                  </div>
-                  <p className="font-bold text-lg mb-1">Executive Director</p>
-                  <p className="text-blue-100 text-sm">Veronica Pichardo</p>
-                </div>
-              </div>
-              <div className="bg-white/10 rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all transform hover:scale-105">
-                <div className="text-center">
-                  <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-full w-24 h-24 mx-auto mb-4 flex items-center justify-center shadow-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
-                    </svg>
-                  </div>
-                  <p className="font-bold text-lg mb-1">Executive Director</p>
-                  <p className="text-blue-100 text-sm">Annette Knox</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        {/* Wave Divider */}
-        <div className="absolute bottom-0 w-full">
-          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0 0L60 10C120 20 240 40 360 53.3C480 67 600 73 720 70C840 67 960 53 1080 48C1200 43 1320 47 1380 49.3L1440 51.3V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0V0Z" fill="white"/>
-          </svg>
-        </div>
-      </section>
+      <HeroSection />
 
       <main className="max-w-7xl mx-auto px-4 py-8 -mt-4">
-        {/* Search and Filters - Modern Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100">
-          <div className="space-y-4">
-            {/* Search Bar with Autocomplete */}
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <input
-                type="text"
-                placeholder="Search sites, addresses, programs, DBN, or LCGMS code..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setShowAutocomplete(true);
-                }}
-                onFocus={() => setShowAutocomplete(true)}
-                onBlur={() => setTimeout(() => setShowAutocomplete(false), 200)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        <SearchFilters
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          showAutocomplete={showAutocomplete}
+          setShowAutocomplete={setShowAutocomplete}
+          searchSuggestions={searchSuggestions as any}
+          boroughs={boroughs as any}
+          programs={programs as any}
+          selectedBorough={selectedBorough}
+          setSelectedBorough={setSelectedBorough}
+          selectedProgram={selectedProgram}
+          setSelectedProgram={setSelectedProgram}
+          selectedCategory={selectedCategory}
+          setSelectedCategory={setSelectedCategory}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          pdfGroupBy={pdfGroupBy}
+          setPdfGroupBy={(v) => setPdfGroupBy(v)}
+          totalShown={sortedSites.length}
+          totalSites={sites.length}
+          rightActions={
+            <>
+              <CopyEmailsButton copied={emailsCopied} onClick={handleCopyEmails} />
+              <PdfExporter
+                sites={sortedSites as any}
+                pdfGroupBy={pdfGroupBy}
+                selectedBorough={selectedBorough}
+                selectedProgram={selectedProgram}
+                selectedCategory={selectedCategory}
+                searchTerm={searchTerm}
               />
-              
-              {/* Autocomplete Dropdown */}
-              {showAutocomplete && searchSuggestions.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {searchSuggestions.map((suggestion, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => {
-                        setSearchTerm(suggestion.site.siteName);
-                        setShowAutocomplete(false);
-                      }}
-                      className="w-full text-left px-4 py-3 hover:bg-blue-50 focus:bg-blue-50 focus:outline-none border-b border-gray-100 last:border-b-0"
-                    >
-                      <div className="font-medium text-gray-900">{suggestion.label}</div>
-                      {suggestion.subLabel && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          {suggestion.site.dbn && <span>DBN: {suggestion.site.dbn}</span>}
-                          {suggestion.site.dbn && suggestion.site.lcgmsBuildingCode && <span> • </span>}
-                          {suggestion.site.lcgmsBuildingCode && <span>LCGMS: {suggestion.site.lcgmsBuildingCode}</span>}
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Filter Row */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Borough</label>
-                <select
-                  value={selectedBorough}
-                  onChange={(e) => setSelectedBorough(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Boroughs</option>
-                  {boroughs.map(borough => (
-                    <option key={borough} value={borough}>{borough}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Program</label>
-                <select
-                  value={selectedProgram}
-                  onChange={(e) => setSelectedProgram(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Programs</option>
-                  {programs.slice(0, 20).map(program => (
-                    <option key={program} value={program}>{program}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Categories</option>
-                  <option value="adult-ed">Adult Education</option>
-                  <option value="youth">Youth Programs</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="siteName">Name</option>
-                  <option value="borough">Borough</option>
-                  <option value="program">Program</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="text-sm text-gray-600">
-              Showing {sortedSites.length} of {sites.length} sites
-            </div>
-
-            {/* View Toggle and PDF Export */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">View:</span>
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}
-                  title="Grid View"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}
-                  title="List View"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-              
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600">PDF Group By:</label>
-                  <select
-                    value={pdfGroupBy}
-                    onChange={(e) => setPdfGroupBy(e.target.value as 'none' | 'program')}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  >
-                    <option value="program">By Program</option>
-                    <option value="none">Single List</option>
-                  </select>
-                </div>
-                <button
-                  onClick={handleCopyEmails}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors relative"
-                  title="Copy principal and assistant principal emails from filtered results"
-                >
-                  {emailsCopied ? (
-                    <>
-                      <Check className="h-5 w-5" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-5 w-5" />
-                      Copy Emails
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={handleExportPdf}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                  Export PDF
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+              <ExcelExporter sites={sortedSites as any} />
+            </>
+          }
+        />
 
         {/* Features and How to Use Section - Accordion */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 mb-8 border border-gray-100">
-          <button
-            onClick={() => setAccordionOpen(!accordionOpen)}
-            className="w-full flex items-center justify-between text-left"
-          >
-            <h2 className="text-xl font-semibold text-gray-900">Features & How to Use</h2>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className={`h-6 w-6 text-gray-500 transform transition-transform ${accordionOpen ? 'rotate-180' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          {accordionOpen && (
-            <div className="mt-6 space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5V5h10v7H8.771z" clipRule="evenodd" />
-                  </svg>
-                  Search & Filter Features
-                </h3>
-                <ul className="space-y-2 text-gray-600 ml-7">
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold mt-1">•</span>
-                    <span><strong>Search:</strong> Search by site name, address, program, borough, DBN, or LCGMS code. Use the autocomplete dropdown for quick suggestions.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold mt-1">•</span>
-                    <span><strong>Filters:</strong> Narrow results by borough, program, or category (Adult Education/Youth Programs).</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold mt-1">•</span>
-                    <span><strong>Sort:</strong> Sort results by site name, borough, or program in ascending or descending order.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold mt-1">•</span>
-                    <span><strong>View Toggle:</strong> Switch between grid view (cards) and list view (table) for different ways to browse sites.</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                  Export to PDF
-                </h3>
-                <ul className="space-y-2 text-gray-600 ml-7">
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-600 font-bold mt-1">•</span>
-                    <span><strong>Group by Program:</strong> </span> Export sites grouped by program with program details (principal, email, main address) at the top of each group.
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-600 font-bold mt-1">•</span>
-                    <span><strong>Single List:</strong> Export all filtered results as a single list without grouping.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-600 font-bold mt-1">•</span>
-                    <span><strong>Current Filters:</strong> The PDF will include your current search filters and only export sites matching your criteria.</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-orange-600" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                  Report Changes
-                </h3>
-                <ul className="space-y-2 text-gray-600 ml-7">
-                  <li className="flex items-start gap-2">
-                    <span className="text-orange-600 font-bold mt-1">•</span>
-                    <span><strong>Submit Updates:</strong> Found incorrect information? Click "Report Changes" on any site card to submit updates for phone numbers, hours, and times.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-orange-600 font-bold mt-1">•</span>
-                    <span><strong>Review Process:</strong> All change requests are reviewed by administrators before being applied to ensure data accuracy.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-orange-600 font-bold mt-1">•</span>
-                    <span><strong>Contact Info:</strong> Include your name and email when submitting changes so administrators can contact you if needed.</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-600" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                    <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Quick Tips
-                </h3>
-                <ul className="space-y-2 text-gray-600 ml-7">
-                  <li className="flex items-start gap-2">
-                    <span className="text-purple-600 font-bold mt-1">•</span>
-                    <span>Use the search bar to quickly find sites by name, DBN, or LCGMS code.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-purple-600 font-bold mt-1">•</span>
-                    <span>Combine filters to narrow down results (e.g., search for a specific program in a particular borough).</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-purple-600 font-bold mt-1">•</span>
-                    <span>Export your filtered results as a PDF for offline access or printing.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-purple-600 font-bold mt-1">•</span>
-                    <span>Click on phone numbers to call directly from your device.</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          )}
-        </div>
+        <FeaturesAccordion open={accordionOpen} onToggle={() => setAccordionOpen(!accordionOpen)} />
 
         {/* Results */}
         {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedSites.map(site => (
-            <div key={site._id} className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 p-6 border border-gray-100 hover:scale-105">
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="text-lg font-semibold text-gray-900">{site.siteName}</h3>
-                {site.status && (
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    site.status === 'Open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {site.status}
-                  </span>
-                )}
-              </div>
-
-              <div className="space-y-2 text-sm text-gray-600">
-                <div className="flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-                  </svg>
-                  <span>{site.program}</span>
-                </div>
-
-                {site.buildingAddress && (
-                  <div className="flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                    </svg>
-                    <span>{site.buildingAddress}</span>
-                  </div>
-                )}
-
-                {site.borough && (
-                  <div className="text-gray-500">
-                    {site.borough}, NY {site.zipCode}
-                  </div>
-                )}
-
-                {site.businessPhone && (
-                  <div className="flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                    </svg>
-                    <a href={`tel:${site.businessPhone}`} className="hover:text-blue-600">
-                      {site.businessPhone}
-                    </a>
-                  </div>
-                )}
-              </div>
-
-              {/* Hours Section - Only show if there are valid hours */}
-              {(() => {
-                const validHours = [];
-                if (site.daytimeHours && site.daytimeHours !== 'N/A' && !site.daytimeHours.includes('undefined')) {
-                  validHours.push({ type: 'Daytime', days: site.daytimeDays, hours: site.daytimeHours });
-                }
-                if (site.eveningHours && site.eveningHours !== 'N/A' && !site.eveningHours.includes('undefined')) {
-                  validHours.push({ type: 'Evening', days: site.eveningDays, hours: site.eveningHours });
-                }
-                if (site.saturdayHours && site.saturdayHours !== 'N/A' && !site.saturdayHours.includes('undefined')) {
-                  validHours.push({ type: 'Saturday', days: null, hours: site.saturdayHours });
-                }
-
-                if (validHours.length > 0) {
-                  return (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <p className="text-xs font-medium text-gray-500 mb-2">Hours:</p>
-                      <div className="space-y-1 text-xs text-gray-600">
-                        {validHours.map((hour, idx) => (
-                          <div key={idx}>
-                            {hour.type}: {hour.days ? `${hour.days} ` : ''}{hour.hours}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                } else {
-                  return (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <p className="text-xs font-medium text-gray-500 mb-2">Hours:</p>
-                      <div className="text-xs text-gray-400 italic">No hours available</div>
-                    </div>
-                  );
-                }
-              })()}
-
-              {/* Report Changes Button */}
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <button
-                  onClick={() => {
-                    setSelectedSite(site);
-                    setIsModalOpen(true);
-                  }}
-                  className="w-full px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                  Report Changes
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-        ) : (
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Site Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Program</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Borough</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedSites.map(site => (
-                    <tr key={site._id} className="hover:bg-blue-50 transition-colors duration-200">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{site.siteName}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{site.program}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {site.buildingAddress && (
-                          <div>
-                            <div>{site.buildingAddress}</div>
-                            <div className="text-gray-400">{site.borough}, NY {site.zipCode}</div>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">{site.borough}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {site.businessPhone && (
-                          <a href={`tel:${site.businessPhone}`} className="text-blue-600 hover:text-blue-800">
-                            {site.businessPhone}
-                          </a>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {sortedSites.map(site => (
+              <SiteCard
+                key={site._id}
+                site={site as any}
+                onReportChanges={(s) => {
+                  setSelectedSite(s);
+                  setIsModalOpen(true);
+                }}
+              />
+            ))}
           </div>
+        ) : (
+          <SitesTable sites={sortedSites as any} />
         )}
 
         {sortedSites.length === 0 && (
