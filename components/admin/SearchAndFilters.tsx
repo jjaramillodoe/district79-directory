@@ -157,6 +157,8 @@ export default function SearchAndFilters({
               <option value="program">Program</option>
               <option value="borough">Borough</option>
               <option value="category">Category</option>
+              <option value="latitude">Latitude</option>
+              <option value="longitude">Longitude</option>
             </select>
             <button
               type="button"

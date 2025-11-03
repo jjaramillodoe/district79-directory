@@ -1,6 +1,6 @@
 'use client';
 
-import { Edit, Trash2, Check, X as XIcon } from 'lucide-react';
+import { Edit, Trash2, Check, X as XIcon, ArrowUp, ArrowDown } from 'lucide-react';
 import Link from 'next/link';
 
 interface Site {
@@ -17,9 +17,12 @@ interface Site {
 interface SitesTableProps {
   sites: Site[];
   onDelete: (id: string) => void;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  onSort?: (column: string) => void;
 }
 
-export default function SitesTable({ sites, onDelete }: SitesTableProps) {
+export default function SitesTable({ sites, onDelete, sortBy, sortOrder, onSort }: SitesTableProps) {
   if (sites.length === 0) {
     return (
       <div className="text-center py-12">
@@ -46,11 +49,27 @@ export default function SitesTable({ sites, onDelete }: SitesTableProps) {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Category
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Latitude
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => onSort?.('latitude')}
+              >
+                <div className="flex items-center gap-1">
+                  Latitude
+                  {sortBy === 'latitude' && (
+                    sortOrder === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                  )}
+                </div>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Longitude
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => onSort?.('longitude')}
+              >
+                <div className="flex items-center gap-1">
+                  Longitude
+                  {sortBy === 'longitude' && (
+                    sortOrder === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                  )}
+                </div>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions

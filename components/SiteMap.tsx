@@ -1,38 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import dynamic from 'next/dynamic';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-
-const Map = dynamic(
-  () => import('react-map-gl/mapbox').then((mod) => mod.Map),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading map...</p>
-        </div>
-      </div>
-    ),
-  }
-);
-
-const Marker = dynamic(
-  () => import('react-map-gl/mapbox').then((mod) => mod.Marker),
-  { ssr: false }
-);
-
-const Popup = dynamic(
-  () => import('react-map-gl/mapbox').then((mod) => mod.Popup),
-  { ssr: false }
-);
-
-const NavigationControl = dynamic(
-  () => import('react-map-gl/mapbox').then((mod) => mod.NavigationControl),
-  { ssr: false }
-);
 
 export interface Site {
   _id: string;
@@ -55,35 +25,53 @@ interface SiteMapProps {
   mapboxToken: string;
 }
 
+// Color palette for 17 different programs
+const PROGRAM_COLORS = [
+  '#FF6B6B', // Red
+  '#4ECDC4', // Turquoise
+  '#45B7D1', // Blue
+  '#FFA07A', // Light Salmon
+  '#98D8C8', // Mint
+  '#F7DC6F', // Yellow
+  '#BB8FCE', // Purple
+  '#85C1E2', // Sky Blue
+  '#F8B739', // Orange
+  '#52BE80', // Green
+  '#EC7063', // Coral
+  '#5DADE2', // Light Blue
+  '#F1948A', // Pink
+  '#73C6B6', // Teal
+  '#F39C12', // Dark Orange
+  '#58D68D', // Light Green
+  '#AF7AC5', // Lavender
+];
+
+// Generate consistent color for program
+const getProgramColor = (program: string): string => {
+  if (!program) return PROGRAM_COLORS[0];
+  
+  let hash = 0;
+  for (let i = 0; i < program.length; i++) {
+    hash = program.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  
+  const index = Math.abs(hash) % PROGRAM_COLORS.length;
+  return PROGRAM_COLORS[index];
+};
+
 export default function SiteMap({
   sites,
   selectedSite,
   onSiteSelect,
   mapboxToken,
 }: SiteMapProps) {
-  const [popupInfo, setPopupInfo] = useState<Site | null>(null);
-  const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const [viewState, setViewState] = useState({
-    longitude: -74.0060,
-    latitude: 40.7128,
-    zoom: 10,
-  });
-
-  // Generate icon index for each program (consistent hash-based assignment)
-  const getProgramIcon = useCallback((program: string): number => {
-    if (!program) return 1;
-    let hash = 0;
-    for (let i = 0; i < program.length; i++) {
-      hash = program.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const iconCount = 17;
-    const index = Math.abs(hash) % iconCount;
-    return index + 1;
-  }, []);
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const popupRef = useRef<mapboxgl.Popup | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Filter sites with valid coordinates
-  const sitesWithCoordinates = useMemo(
+  const validSites = useMemo(
     () =>
       sites.filter(
         (site) =>
@@ -97,52 +85,365 @@ export default function SiteMap({
     [sites]
   );
 
-  // Update view state when sites change
+  // Convert sites to GeoJSON format
+  const geoJsonData = useMemo(() => {
+    return {
+      type: 'FeatureCollection' as const,
+      features: validSites.map((site) => ({
+        type: 'Feature' as const,
+        properties: {
+          id: site._id,
+          siteName: site.siteName || 'Unknown',
+          program: site.program || '',
+          buildingAddress: site.buildingAddress || '',
+          borough: site.borough || '',
+          zipCode: site.zipCode || '',
+          businessPhone: site.businessPhone || '',
+          category: site.category || 'adult-ed',
+          color: getProgramColor(site.program || ''),
+        },
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [site.longitude!, site.latitude!],
+        },
+      })),
+    };
+  }, [validSites]);
+
+  // Initialize map
   useEffect(() => {
-    if (sitesWithCoordinates.length > 0) {
-      const avgLat =
-        sitesWithCoordinates.reduce(
-          (sum, site) => sum + (site.latitude || 0),
-          0
-        ) / sitesWithCoordinates.length;
-      const avgLng =
-        sitesWithCoordinates.reduce(
-          (sum, site) => sum + (site.longitude || 0),
-          0
-        ) / sitesWithCoordinates.length;
+    if (!mapContainer.current || map.current || !mapboxToken) return;
 
-      setViewState((prev) => ({
-        ...prev,
-        latitude: avgLat,
-        longitude: avgLng,
-        zoom: sitesWithCoordinates.length === 1 ? 14 : 10,
-      }));
-    }
-  }, [sitesWithCoordinates.length]);
+    mapboxgl.accessToken = mapboxToken;
 
-  // Handle site selection
-  const handleMarkerClick = (site: Site) => {
-    setPopupInfo(site);
-    if (onSiteSelect) {
-      onSiteSelect(site._id);
-    }
-  };
+    // Initialize map with NYC center
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/light-v11',
+      center: [-74.0060, 40.7128],
+      zoom: 10,
+    });
 
-  // Update popup when selectedSite changes externally
+    // Add navigation controls
+    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+    map.current.on('load', () => {
+      setIsLoaded(true);
+    });
+
+    // Cleanup
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+      setIsLoaded(false);
+    };
+  }, [mapboxToken]);
+
+  // Update map source and layers when data changes
   useEffect(() => {
-    if (selectedSite) {
-      const site = sites.find((s) => s._id === selectedSite);
-      if (site && site.latitude && site.longitude) {
-        setPopupInfo(site);
-        setViewState((prev) => ({
-          ...prev,
-          latitude: site.latitude!,
-          longitude: site.longitude!,
+    if (!map.current || !isLoaded) return;
+
+    const mapInstance = map.current;
+
+    // Remove existing source and layers if they exist
+    if (mapInstance.getSource('sites')) {
+      if (mapInstance.getLayer('clusters')) mapInstance.removeLayer('clusters');
+      if (mapInstance.getLayer('cluster-count')) mapInstance.removeLayer('cluster-count');
+      if (mapInstance.getLayer('unclustered-point')) mapInstance.removeLayer('unclustered-point');
+      mapInstance.removeSource('sites');
+    }
+
+    // Add GeoJSON source with clustering
+    mapInstance.addSource('sites', {
+      type: 'geojson',
+      data: geoJsonData,
+      cluster: true,
+      clusterMaxZoom: 14, // Max zoom to cluster points
+      clusterRadius: 50, // Radius of each cluster
+    });
+
+    // Add cluster circles layer
+    mapInstance.addLayer({
+      id: 'clusters',
+      type: 'circle',
+      source: 'sites',
+      filter: ['has', 'point_count'],
+      paint: {
+        'circle-color': [
+          'step',
+          ['get', 'point_count'],
+          '#51bbd6',
+          100,
+          '#f1f075',
+          750,
+          '#f28cb1',
+        ],
+        'circle-radius': [
+          'step',
+          ['get', 'point_count'],
+          20,
+          100,
+          30,
+          750,
+          40,
+        ],
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#fff',
+      },
+    });
+
+    // Add cluster count labels
+    mapInstance.addLayer({
+      id: 'cluster-count',
+      type: 'symbol',
+      source: 'sites',
+      filter: ['has', 'point_count'],
+      layout: {
+        'text-field': '{point_count_abbreviated}',
+        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+        'text-size': 12,
+      },
+      paint: {
+        'text-color': '#ffffff',
+      },
+    });
+
+    // Add individual markers layer with program colors
+    mapInstance.addLayer({
+      id: 'unclustered-point',
+      type: 'circle',
+      source: 'sites',
+      filter: ['!', ['has', 'point_count']],
+      paint: {
+        'circle-color': ['get', 'color'],
+        'circle-radius': 8,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff',
+      },
+    });
+
+    // Click handler for clusters
+    mapInstance.on('click', 'clusters', (e) => {
+      const features = mapInstance.queryRenderedFeatures(e.point, {
+        layers: ['clusters'],
+      });
+      const clusterId = features[0].properties?.cluster_id;
+      const source = mapInstance.getSource('sites') as mapboxgl.GeoJSONSource;
+      
+      source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+        if (err) return;
+
+        mapInstance.easeTo({
+          center: (e.lngLat as any),
+          zoom: zoom as number,
+        });
+      });
+    });
+
+    // Click handler for individual markers
+    mapInstance.on('click', 'unclustered-point', (e) => {
+      if (!e.features || e.features.length === 0) return;
+      
+      const feature = e.features[0];
+      const props = feature.properties;
+      if (!props) return;
+
+      const coordinates = (feature.geometry as GeoJSON.Point).coordinates;
+      
+      // Close existing popup
+      if (popupRef.current) {
+        popupRef.current.remove();
+      }
+
+      // Create enhanced popup content
+      const popupContent = document.createElement('div');
+      popupContent.className = 'popup-content';
+      popupContent.style.cssText = 'min-width: 250px; padding: 0;';
+      popupContent.innerHTML = `
+        <div style="padding: 12px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${props.color}; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
+            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #111827;">${props.siteName}</h3>
+          </div>
+          <p style="margin: 0 0 8px 0; font-size: 14px; color: #4B5563; font-weight: 500;">${props.program || 'N/A'}</p>
+          ${
+            props.buildingAddress
+              ? `<div style="margin-bottom: 6px; font-size: 13px; color: #6B7280;">
+                  <svg style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+                  </svg>
+                  ${props.buildingAddress}${props.borough ? `, ${props.borough}` : ''}${props.zipCode ? ` ${props.zipCode}` : ''}
+                </div>`
+              : ''
+          }
+          ${
+            props.businessPhone
+              ? `<div style="margin-bottom: 6px; font-size: 13px; color: #6B7280;">
+                  <svg style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+                  </svg>
+                  <a href="tel:${props.businessPhone}" style="color: #2563EB; text-decoration: none;">${props.businessPhone}</a>
+                </div>`
+              : ''
+          }
+          <div style="margin-top: 8px;">
+            <span style="font-size: 11px; padding: 4px 8px; border-radius: 12px; font-weight: 500; display: inline-block; ${
+              props.category === 'adult-ed'
+                ? 'background-color: #DBEAFE; color: #1E40AF;'
+                : 'background-color: #F3E8FF; color: #6B21A8;'
+            }">
+              ${props.category === 'adult-ed' ? 'Adult Ed' : 'Youth'}
+            </span>
+          </div>
+        </div>
+      `;
+
+      // Create and show popup
+      const popup = new mapboxgl.Popup({
+        offset: 25,
+        closeButton: true,
+        closeOnClick: false,
+        className: 'site-popup',
+      })
+        .setLngLat([coordinates[0], coordinates[1]])
+        .setDOMContent(popupContent)
+        .addTo(mapInstance);
+
+      popupRef.current = popup;
+
+      // Callback for site selection
+      if (onSiteSelect) {
+        onSiteSelect(props.id);
+      }
+
+      // Fly to marker
+      mapInstance.flyTo({
+        center: [coordinates[0], coordinates[1]],
+        zoom: 15,
+        duration: 500,
+      });
+    });
+
+    // Change cursor on hover
+    mapInstance.on('mouseenter', 'clusters', () => {
+      mapInstance.getCanvas().style.cursor = 'pointer';
+    });
+    mapInstance.on('mouseleave', 'clusters', () => {
+      mapInstance.getCanvas().style.cursor = '';
+    });
+
+    mapInstance.on('mouseenter', 'unclustered-point', () => {
+      mapInstance.getCanvas().style.cursor = 'pointer';
+    });
+    mapInstance.on('mouseleave', 'unclustered-point', () => {
+      mapInstance.getCanvas().style.cursor = '';
+    });
+
+    // Fit bounds to all sites if we have them
+    if (validSites.length > 0) {
+      const bounds = new mapboxgl.LngLatBounds();
+      validSites.forEach((site) => {
+        if (site.latitude && site.longitude) {
+          bounds.extend([site.longitude, site.latitude]);
+        }
+      });
+      
+      if (validSites.length === 1) {
+        mapInstance.flyTo({
+          center: [validSites[0].longitude!, validSites[0].latitude!],
           zoom: 14,
-        }));
+          duration: 1000,
+        });
+      } else {
+        mapInstance.fitBounds(bounds, {
+          padding: 50,
+          duration: 1000,
+        });
       }
     }
-  }, [selectedSite, sites]);
+  }, [geoJsonData, isLoaded, onSiteSelect, validSites]);
+
+  // Handle selected site changes
+  useEffect(() => {
+    if (!map.current || !isLoaded || !selectedSite) return;
+
+    const site = validSites.find((s) => s._id === selectedSite);
+    if (site && site.latitude && site.longitude) {
+      // Find the feature and trigger popup
+      const feature = geoJsonData.features.find((f) => f.properties.id === selectedSite);
+      if (feature) {
+        // Close existing popup
+        if (popupRef.current) {
+          popupRef.current.remove();
+        }
+
+        // Create popup (reuse the same logic)
+        const props = feature.properties;
+        const coordinates = feature.geometry.coordinates;
+
+        const popupContent = document.createElement('div');
+        popupContent.className = 'popup-content';
+        popupContent.style.cssText = 'min-width: 250px; padding: 0;';
+        popupContent.innerHTML = `
+          <div style="padding: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${props.color}; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
+              <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #111827;">${props.siteName}</h3>
+            </div>
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #4B5563; font-weight: 500;">${props.program || 'N/A'}</p>
+            ${
+              props.buildingAddress
+                ? `<div style="margin-bottom: 6px; font-size: 13px; color: #6B7280;">
+                    <svg style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+                    </svg>
+                    ${props.buildingAddress}${props.borough ? `, ${props.borough}` : ''}${props.zipCode ? ` ${props.zipCode}` : ''}
+                  </div>`
+                : ''
+            }
+            ${
+              props.businessPhone
+                ? `<div style="margin-bottom: 6px; font-size: 13px; color: #6B7280;">
+                    <svg style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+                    </svg>
+                    <a href="tel:${props.businessPhone}" style="color: #2563EB; text-decoration: none;">${props.businessPhone}</a>
+                  </div>`
+                : ''
+            }
+            <div style="margin-top: 8px;">
+              <span style="font-size: 11px; padding: 4px 8px; border-radius: 12px; font-weight: 500; display: inline-block; ${
+                props.category === 'adult-ed'
+                  ? 'background-color: #DBEAFE; color: #1E40AF;'
+                  : 'background-color: #F3E8FF; color: #6B21A8;'
+              }">
+                ${props.category === 'adult-ed' ? 'Adult Ed' : 'Youth'}
+              </span>
+            </div>
+          </div>
+        `;
+
+        const popup = new mapboxgl.Popup({
+          offset: 25,
+          closeButton: true,
+          closeOnClick: false,
+        })
+          .setLngLat([coordinates[0], coordinates[1]])
+          .setDOMContent(popupContent)
+          .addTo(map.current);
+
+        popupRef.current = popup;
+      }
+
+      map.current.flyTo({
+        center: [site.longitude, site.latitude],
+        zoom: 15,
+        duration: 500,
+      });
+    }
+  }, [selectedSite, validSites, isLoaded, geoJsonData]);
 
   if (!mapboxToken) {
     return (
@@ -155,124 +456,22 @@ export default function SiteMap({
   }
 
   return (
-    <div ref={mapContainerRef} className="h-full w-full">
-      <Map
-        {...viewState}
-        onMove={(evt) => setViewState(evt.viewState)}
-        onLoad={() => setIsMapLoaded(true)}
-        mapboxAccessToken={mapboxToken}
-        style={{ width: '100%', height: '100%' }}
-        mapStyle="mapbox://styles/mapbox/light-v11"
-      >
-        {isMapLoaded && <NavigationControl position="top-right" />}
-
-        {isMapLoaded && sitesWithCoordinates.map((site) => {
-          if (!site.latitude || !site.longitude) return null;
-
-          const iconNumber = getProgramIcon(site.program);
-          const isSelected = selectedSite === site._id;
-
-          return (
-            <Marker
-              key={site._id}
-              longitude={site.longitude}
-              latitude={site.latitude}
-              anchor="bottom"
-              onClick={(e) => {
-                if (e?.originalEvent) {
-                  e.originalEvent.stopPropagation();
-                }
-                handleMarkerClick(site);
-              }}
-            >
-              <div
-                className={`cursor-pointer transform transition-all ${
-                  isSelected ? 'scale-125' : 'hover:scale-110'
-                }`}
-              >
-                <img
-                  src={`/images/icons/icon${iconNumber}.png`}
-                  alt={`${site.program} icon`}
-                  width={40}
-                  height={40}
-                  className="drop-shadow-lg"
-                  style={{ pointerEvents: 'none', display: 'block' }}
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    if (!target.src.endsWith('/images/icons/icon1.png')) {
-                      target.src = '/images/icons/icon1.png';
-                    }
-                  }}
-                />
-              </div>
-            </Marker>
-          );
-        })}
-
-        {popupInfo && popupInfo.latitude && popupInfo.longitude && (
-          <Popup
-            anchor="top"
-            longitude={popupInfo.longitude}
-            latitude={popupInfo.latitude}
-            onClose={() => setPopupInfo(null)}
-            closeButton={true}
-            closeOnClick={false}
-          >
-            <div className="p-2 min-w-[200px]">
-              <h3 className="font-semibold text-gray-900 mb-1">
-                {popupInfo.siteName}
-              </h3>
-              <p className="text-sm text-gray-600 mb-2">{popupInfo.program}</p>
-              {popupInfo.buildingAddress && (
-                <p className="text-xs text-gray-500 mb-1">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-3 w-3 inline mr-1"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  {popupInfo.buildingAddress}
-                  {popupInfo.borough && `, ${popupInfo.borough}`}
-                </p>
-              )}
-              {popupInfo.businessPhone && (
-                <p className="text-xs text-gray-500 mb-1">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-3 w-3 inline mr-1"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                  </svg>
-                  <a
-                    href={`tel:${popupInfo.businessPhone}`}
-                    className="text-blue-600 hover:underline"
-                  >
-                    {popupInfo.businessPhone}
-                  </a>
-                </p>
-              )}
-              <span
-                className={`text-xs px-2 py-1 rounded-full ${
-                  popupInfo.category === 'adult-ed'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-purple-100 text-purple-800'
-                }`}
-              >
-                {popupInfo.category === 'adult-ed' ? 'Adult Ed' : 'Youth'}
-              </span>
-            </div>
-          </Popup>
-        )}
-      </Map>
-    </div>
+    <>
+      <div ref={mapContainer} className="h-full w-full" style={{ minHeight: '400px' }} />
+      <style jsx global>{`
+        .site-popup .mapboxgl-popup-content {
+          border-radius: 8px;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .site-popup .mapboxgl-popup-close-button {
+          font-size: 20px;
+          color: #6B7280;
+          padding: 4px 8px;
+        }
+        .site-popup .mapboxgl-popup-close-button:hover {
+          color: #111827;
+        }
+      `}</style>
+    </>
   );
 }
-

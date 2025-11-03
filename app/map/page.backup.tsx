@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Footer from '@/components/Footer';
 import SiteMap, { Site } from '@/components/SiteMap';
-import { Loader2, ChevronLeft, AlertCircle } from 'lucide-react';
+import { MapPin, Loader2, ChevronLeft, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function MapPage() {
@@ -15,43 +15,50 @@ export default function MapPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSite, setSelectedSite] = useState<string | undefined>();
 
-  // Fetch both token and sites in parallel
+  // Fetch mapbox token
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchMapboxToken = async () => {
       try {
-        setLoading(true);
-        
-        const [tokenResponse, sitesResponse] = await Promise.all([
-          fetch('/api/mapbox-token'),
-          fetch('/api/sites'),
-        ]);
-
-        // Handle token
-        if (!tokenResponse.ok) {
+        const response = await fetch('/api/mapbox-token');
+        if (!response.ok) {
           throw new Error('Failed to fetch Mapbox token');
         }
-        const tokenData = await tokenResponse.json();
-        if (tokenData.token) {
-          setMapboxToken(tokenData.token);
+        const data = await response.json();
+        if (data.token) {
+          setMapboxToken(data.token);
         } else {
           throw new Error('Token not found in response');
         }
+      } catch (err) {
+        console.error('Error fetching Mapbox token:', err);
+        setError('Failed to load map. Please check your Mapbox configuration.');
+        setLoading(false);
+      }
+    };
 
-        // Handle sites
-        if (!sitesResponse.ok) {
+    fetchMapboxToken();
+  }, []);
+
+  // Fetch sites
+  useEffect(() => {
+    const fetchSites = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/sites');
+        if (!response.ok) {
           throw new Error('Failed to fetch sites');
         }
-        const sitesData = await sitesResponse.json();
-        setSites(sitesData || []);
+        const data = await response.json();
+        setSites(data || []);
       } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load map data. Please check your configuration.');
+        console.error('Error fetching sites:', err);
+        setError('Failed to load sites data.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchSites();
   }, []);
 
   // Filter sites with valid coordinates
@@ -78,6 +85,15 @@ export default function MapPage() {
     [sitesWithCoordinates]
   );
 
+  // Get unique categories for filter
+  const categories = useMemo(
+    () =>
+      Array.from(
+        new Set(sitesWithCoordinates.map((s) => s.category).filter(Boolean))
+      ).sort(),
+    [sitesWithCoordinates]
+  );
+
   // Filter sites by program and category
   const filteredSites = useMemo(
     () =>
@@ -91,6 +107,11 @@ export default function MapPage() {
     [sitesWithCoordinates, selectedProgram, selectedCategory]
   );
 
+  // Handle site selection
+  const handleSiteSelect = (siteId: string) => {
+    setSelectedSite(siteId);
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -100,7 +121,7 @@ export default function MapPage() {
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
             Loading Map
           </h2>
-          <p className="text-gray-600">Loading map data...</p>
+          <p className="text-gray-600">Fetching site data...</p>
         </div>
       </div>
     );
@@ -186,18 +207,23 @@ export default function MapPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">All Categories</option>
-                  <option value="adult-ed">Adult Education</option>
-                  <option value="youth">Youth Programs</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category === 'adult-ed' ? 'Adult Education' : 'Youth Programs'}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
 
             <div className="mt-4 text-sm text-gray-600">
-              Showing {filteredSites.length} of {sitesWithCoordinates.length} sites
+              Showing {filteredSites.length} of {sitesWithCoordinates.length}{' '}
+              sites with coordinates
               {sites.length !== sitesWithCoordinates.length && (
                 <span className="text-gray-500">
                   {' '}
-                  ({sites.length - sitesWithCoordinates.length} without coordinates)
+                  ({sites.length - sitesWithCoordinates.length} sites without
+                  coordinates)
                 </span>
               )}
             </div>
@@ -205,12 +231,15 @@ export default function MapPage() {
         </div>
 
         {/* Map Container */}
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden" style={{ height: '600px' }}>
+        <div
+          className="bg-white rounded-lg shadow-lg overflow-hidden"
+          style={{ height: '600px' }}
+        >
           {mapboxToken && (
             <SiteMap
               sites={filteredSites}
               selectedSite={selectedSite}
-              onSiteSelect={setSelectedSite}
+              onSiteSelect={handleSiteSelect}
               mapboxToken={mapboxToken}
             />
           )}
@@ -221,8 +250,13 @@ export default function MapPage() {
           <h3 className="font-semibold text-blue-900 mb-2">About the Map</h3>
           <ul className="text-sm text-blue-800 space-y-1">
             <li>• Click on markers to view site details</li>
-            <li>• Filter by program or category to narrow down results</li>
+            <li>
+              • Filter by program or category to narrow down results
+            </li>
             <li>• Only sites with geocoded coordinates are displayed</li>
+            <li>
+              • Sites without coordinates will appear once they are geocoded
+            </li>
           </ul>
         </div>
       </div>
@@ -231,3 +265,4 @@ export default function MapPage() {
     </div>
   );
 }
+

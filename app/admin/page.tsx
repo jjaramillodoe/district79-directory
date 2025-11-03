@@ -591,6 +591,24 @@ export default function AdminPage() {
       case 'category':
         comparison = (a.category || '').localeCompare(b.category || '');
         break;
+      case 'latitude':
+        // Handle null/undefined values - put them at the end
+        const latA = a.latitude ?? null;
+        const latB = b.latitude ?? null;
+        if (latA === null && latB === null) comparison = 0;
+        else if (latA === null) comparison = 1; // null values go to end
+        else if (latB === null) comparison = -1;
+        else comparison = latA - latB;
+        break;
+      case 'longitude':
+        // Handle null/undefined values - put them at the end
+        const lngA = a.longitude ?? null;
+        const lngB = b.longitude ?? null;
+        if (lngA === null && lngB === null) comparison = 0;
+        else if (lngA === null) comparison = 1; // null values go to end
+        else if (lngB === null) comparison = -1;
+        else comparison = lngA - lngB;
+        break;
       default:
         comparison = 0;
     }
@@ -688,6 +706,16 @@ export default function AdminPage() {
         <SitesTable
           sites={sortedSites}
           onDelete={handleDelete}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={(column) => {
+            if (sortBy === column) {
+              setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+            } else {
+              setSortBy(column);
+              setSortOrder('asc');
+            }
+          }}
         />
         
         {sortedSites.length === 0 && (
