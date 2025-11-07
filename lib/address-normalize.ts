@@ -11,6 +11,27 @@ interface NormalizedAddress {
 }
 
 /**
+ * Get ordinal suffix for a number (1st, 2nd, 3rd, 4th, etc.)
+ */
+function getOrdinalSuffix(num: number): string {
+  const lastDigit = num % 10;
+  const lastTwoDigits = num % 100;
+  
+  // Special cases for 11th, 12th, 13th
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
+    return 'th';
+  }
+  
+  // Regular cases
+  switch (lastDigit) {
+    case 1: return 'st';
+    case 2: return 'nd';
+    case 3: return 'rd';
+    default: return 'th';
+  }
+}
+
+/**
  * Common NYC street abbreviations and their standard forms
  */
 const STREET_ABBREVIATIONS: Record<string, string> = {
@@ -155,9 +176,11 @@ export function normalizeNYCAddress(address: string): string {
     
     if ((isLast || isSecondToLast) && STREET_ABBREVIATIONS[part]) {
       normalizedParts.push(STREET_ABBREVIATIONS[part]);
-    } else if (/^\d+/.test(part)) {
-      // This is a number (like "20" in "20 Avenue") - keep it as is but capitalize
-      normalizedParts.push(part);
+    } else if (/^\d+$/.test(part)) {
+      // This is a plain number (like "20" in "20 Avenue") - add ordinal suffix
+      const num = parseInt(part, 10);
+      const suffix = getOrdinalSuffix(num);
+      normalizedParts.push(`${num}${suffix}`);
     } else {
       // Capitalize first letter of each word
       normalizedParts.push(part.charAt(0).toUpperCase() + part.slice(1));
