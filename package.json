@@ -12,6 +12,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@vercel/analytics": "^1.5.0",
+    "@vercel/og": "^0.8.5",
     "bcryptjs": "^2.4.3",
     "csv-parse": "^5.5.0",
     "google-auth-library": "^10.5.0",
