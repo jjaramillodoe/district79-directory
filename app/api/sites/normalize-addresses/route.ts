@@ -4,7 +4,7 @@ import { normalizeNYCAddress } from '@/lib/address-normalize';
 
 export async function POST(request: Request) {
   try {
-    const { category, dryRun } = await request.json().catch(() => ({}));
+    const { category, dryRun, force } = await request.json().catch(() => ({}));
 
     const client = await mongodb;
     const db = client.db('district79');
@@ -35,6 +35,7 @@ export async function POST(request: Request) {
       const newAddress = normalizeNYCAddress(oldAddress);
 
       const changed = oldAddress !== newAddress;
+      const shouldUpdate = changed || force; // Force update even if unchanged
 
       results.push({
         siteId: site._id.toString(),
@@ -44,8 +45,8 @@ export async function POST(request: Request) {
         changed,
       });
 
-      // Update in database if not dry run and address changed
-      if (!dryRun && changed) {
+      // Update in database if not dry run and (address changed OR force mode)
+      if (!dryRun && shouldUpdate) {
         await db.collection('sites').updateOne(
           { _id: site._id },
           { $set: { buildingAddress: newAddress } }
@@ -62,9 +63,12 @@ export async function POST(request: Request) {
       changed: changedCount,
       updated: updatedCount,
       dryRun: dryRun || false,
+      force: force || false,
       results: results.slice(0, 100), // Return first 100 results for preview
       message: dryRun
         ? `Found ${changedCount} addresses that would be normalized out of ${sites.length} total`
+        : force
+        ? `Force updated ${updatedCount} addresses (${changedCount} changed) out of ${sites.length} total`
         : `Successfully normalized ${updatedCount} addresses out of ${sites.length} total`,
     });
   } catch (error) {

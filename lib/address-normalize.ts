@@ -102,6 +102,11 @@ export function normalizeNYCAddress(address: string): string {
   normalized = normalized.replace(/,+/g, ',');
   normalized = normalized.replace(/\s+/g, ' ');
 
+  // PRE-PROCESSING: Remove incorrectly placed ordinal suffixes from building numbers
+  // Match pattern like "751st Briggs" where a number with ordinal is followed by a non-number
+  // This fixes addresses that were incorrectly normalized previously
+  normalized = normalized.replace(/^(\d+)(st|nd|rd|th)\s+([A-Za-z])/i, '$1 $3');
+
   // Split address into parts
   const parts = normalized.split(/[\s,]+/).filter(p => p);
 

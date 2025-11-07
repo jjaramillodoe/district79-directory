@@ -258,7 +258,7 @@ export default function AdminPage() {
   };
 
   const handleNormalizeAddresses = async () => {
-    if (!confirm('This will normalize all addresses in the database. Continue?')) {
+    if (!confirm('This will normalize and fix all addresses in the database (including fixing incorrectly normalized addresses). Continue?')) {
       return;
     }
 
@@ -272,6 +272,7 @@ export default function AdminPage() {
         body: JSON.stringify({
           category: selectedCategory === 'all' ? 'all' : selectedCategory,
           dryRun: false,
+          force: true, // Force update to fix previously incorrect normalizations
         }),
       });
 
@@ -279,7 +280,7 @@ export default function AdminPage() {
 
       if (response.ok) {
         setNormalizeStatus(
-          `✅ Successfully normalized ${data.updated} addresses out of ${data.total} total`
+          data.message || `✅ Successfully normalized ${data.updated} addresses out of ${data.total} total`
         );
         fetchSites(); // Refresh sites
       } else {
