@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   // Always use the public callback route (not the admin one)
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
   const redirectUri = `${baseUrl}/api/auth/public/google/callback`;
   const allowedDomains = process.env.GOOGLE_ALLOWED_DOMAINS?.split(',') || ['schools.nyc.gov'];
 

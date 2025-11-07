@@ -6,7 +6,8 @@ import { NextResponse } from 'next/server';
  */
 export async function GET() {
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/google/callback`;
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${baseUrl}/api/auth/google/callback`;
   const allowedDomains = process.env.GOOGLE_ALLOWED_DOMAINS?.split(',') || ['schools.nyc.gov'];
 
   if (!clientId) {

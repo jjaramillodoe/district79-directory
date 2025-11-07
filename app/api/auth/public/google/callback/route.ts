@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
     const redirectUri = `${baseUrl}/api/auth/public/google/callback`;
     const allowedDomains = process.env.GOOGLE_ALLOWED_DOMAINS?.split(',').map(d => d.trim()) || ['schools.nyc.gov'];
     const jwtSecret = process.env.JWT_SECRET;

@@ -6,6 +6,11 @@ import { Analytics } from "@vercel/analytics/react";
 export const metadata: Metadata = {
   title: "District 79 Directory",
   description: "Directory of District 79 Adult Education and Youth Programs",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+    shortcut: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
