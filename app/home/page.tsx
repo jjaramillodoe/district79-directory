@@ -84,28 +84,21 @@ export default function Home() {
 
   const checkAuth = async () => {
     try {
-      console.log('🔍 Home page - Checking authentication...');
       const response = await fetch('/api/auth/public/verify', {
         credentials: 'include', // Important: include cookies
       });
       
-      console.log('   - Response status:', response.status);
-      
       if (response.ok) {
         const data = await response.json();
-        console.log('   - Response data:', data);
         
         if (data.authenticated) {
-          console.log('✅ Home page - Authenticated, fetching sites');
           setIsAuthenticated(true);
           fetchSites(); // Only fetch sites if authenticated
         } else {
-          console.log('❌ Home page - Not authenticated, redirecting to login');
           // Not authenticated, redirect to login page
           window.location.href = '/';
         }
       } else {
-        console.log('❌ Home page - Response not OK, redirecting to login');
         // Not authenticated, redirect to login page
         window.location.href = '/';
       }

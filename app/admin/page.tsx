@@ -377,8 +377,7 @@ export default function AdminPage() {
         if (data.results) {
           const failed = data.results.filter((r: any) => !r.success).length;
           if (failed > 0) {
-            setUploadStatus(`✅ Generated ${data.generated} descriptions. ${failed} failed. Check console for details.`);
-            console.log('Generation results:', data.results);
+            setUploadStatus(`✅ Generated ${data.generated} descriptions. ${failed} failed.`);
           }
         }
         setSelectedSites(new Set()); // Clear selection after generation

@@ -36,12 +36,9 @@ export default function LoginPage() {
 
   const checkGoogleConfig = async () => {
     try {
-      console.log('🔍 Checking Google OAuth config...');
       const response = await fetch('/api/auth/public/config');
       if (response.ok) {
         const data = await response.json();
-        console.log('📦 Config API Response:', data);
-        console.log('✅ Setting googleEnabled to:', data.googleEnabled);
         setGoogleEnabled(data.googleEnabled || false);
       } else {
         console.error('❌ Config API failed with status:', response.status);

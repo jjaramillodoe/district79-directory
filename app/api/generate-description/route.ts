@@ -96,13 +96,11 @@ Write the description now:`;
           temperature: 0.7,
         });
         description = response.output_text?.trim() || null;
-        console.log(`Generated description using model: gpt-5 (via responses.create())`);
       } else {
         throw new Error('responses.create() API not available');
       }
     } catch (modelError: any) {
       // If GPT-5 responses API fails, fallback to GPT-4o using chat.completions
-      console.log('GPT-5 responses API not available, using GPT-4.1 instead');
       model = 'gpt-4.1';
       try {
         const completion = await openai.chat.completions.create({
@@ -121,10 +119,8 @@ Write the description now:`;
           temperature: 0.7,
         });
         description = completion.choices[0]?.message?.content?.trim() || null;
-        console.log(`Generated description using model: ${model}`);
       } catch (gpt4oError: any) {
         // Final fallback to gpt-4-turbo-preview
-        console.log('GPT-4o not available, trying gpt-4-turbo-preview');
         model = 'gpt-4-turbo-preview';
         const completion = await openai.chat.completions.create({
           model: model,
@@ -142,7 +138,6 @@ Write the description now:`;
           temperature: 0.7,
         });
         description = completion.choices[0]?.message?.content?.trim() || null;
-        console.log(`Generated description using model: ${model}`);
       }
     }
 

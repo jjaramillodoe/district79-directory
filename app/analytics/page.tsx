@@ -66,14 +66,12 @@ export default function AnalyticsPage() {
 
   const checkAuth = async () => {
     try {
-      console.log('🔍 Analytics page - Checking authentication...');
       const response = await fetch('/api/auth/public/verify', {
         credentials: 'include', // Important: include cookies
       });
       
       if (response.ok) {
         const data = await response.json();
-        console.log('   - Analytics page auth response:', data);
         
         if (data.authenticated) {
           setIsAuthenticated(true);

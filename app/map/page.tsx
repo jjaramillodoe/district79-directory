@@ -25,14 +25,12 @@ export default function MapPage() {
 
   const checkAuth = async () => {
     try {
-      console.log('🔍 Map page - Checking authentication...');
       const response = await fetch('/api/auth/public/verify', {
         credentials: 'include', // Important: include cookies
       });
       
       if (response.ok) {
         const data = await response.json();
-        console.log('   - Map page auth response:', data);
         
         if (data.authenticated) {
           setIsAuthenticated(true);

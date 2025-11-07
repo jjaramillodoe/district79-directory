@@ -163,13 +163,11 @@ Write the description now:`;
             });
             description = response.output_text?.trim() || null;
             modelUsed = 'gpt-5';
-            console.log(`Generated description for ${site.siteName} using model: gpt-5 (via responses.create())`);
           } else {
             throw new Error('responses.create() API not available');
           }
         } catch (modelError: any) {
           // If GPT-5 responses API fails, fallback to GPT-4o using chat.completions
-          console.log(`GPT-5 responses API not available for ${site.siteName}, trying GPT-4o`);
           try {
             const completion = await openai.chat.completions.create({
               model: 'gpt-4o',
@@ -188,11 +186,9 @@ Write the description now:`;
             });
             description = completion.choices[0]?.message?.content?.trim() || null;
             modelUsed = 'gpt-4o';
-            console.log(`Generated description for ${site.siteName} using model: gpt-4o`);
           } catch (gpt4oError: any) {
             // Final fallback to gpt-4-turbo-preview
             try {
-              console.log(`GPT-4o not available for ${site.siteName}, trying gpt-4-turbo-preview`);
               const completion = await openai.chat.completions.create({
                 model: 'gpt-4-turbo-preview',
                 messages: [
@@ -210,7 +206,6 @@ Write the description now:`;
               });
               description = completion.choices[0]?.message?.content?.trim() || null;
               modelUsed = 'gpt-4-turbo-preview';
-              console.log(`Generated description for ${site.siteName} using model: gpt-4-turbo-preview`);
             } catch (turboError: any) {
               console.error(`Failed to generate description with any model for ${site.siteName}:`, turboError);
               throw turboError;

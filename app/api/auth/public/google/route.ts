@@ -11,10 +11,6 @@ export async function GET() {
   const redirectUri = `${baseUrl}/api/auth/public/google/callback`;
   const allowedDomains = process.env.GOOGLE_ALLOWED_DOMAINS?.split(',') || ['schools.nyc.gov'];
 
-  console.log('🔍 Public Google OAuth initiation:');
-  console.log('   - Redirect URI:', redirectUri);
-  console.log('   - Client ID exists:', !!clientId);
-
   if (!clientId) {
     return NextResponse.json(
       { error: 'Google OAuth not configured' },
@@ -35,7 +31,6 @@ export async function GET() {
 
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
-  console.log('   - Redirecting to Google OAuth');
   return NextResponse.redirect(authUrl);
 }
 

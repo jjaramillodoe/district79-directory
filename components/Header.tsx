@@ -46,7 +46,6 @@ export default function Header() {
         const response = await fetch('/api/auth/public/config');
         if (response.ok) {
           const data = await response.json();
-          console.log('🔍 Header - Config API Response:', data);
         }
       } catch (error) {
         console.error('Header - Error checking Google config:', error);
@@ -82,12 +81,9 @@ export default function Header() {
   useEffect(() => {
     const checkGoogleConfig = async () => {
       try {
-        console.log('🔍 Header - Checking Google OAuth config...');
         const response = await fetch('/api/auth/public/config');
         if (response.ok) {
           const data = await response.json();
-          console.log('📦 Header - Config API Response:', data);
-          console.log('✅ Header - Setting googleEnabled to:', data.googleEnabled);
           setGoogleEnabledHeader(data.googleEnabled || false);
         } else {
           console.error('❌ Header - Config API failed with status:', response.status);
