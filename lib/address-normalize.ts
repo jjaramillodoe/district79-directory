@@ -116,7 +116,7 @@ export function normalizeNYCAddress(address: string): string {
   // If we have at least 2 parts and the second is a number followed by a street type, 
   // then first is building number (e.g., "5800 20 Avenue")
   // If second part is not a number, first might be building number (e.g., "123 Main St")
-  if (parts.length >= 2 && /^\d+/.test(parts[0])) {
+  if (parts.length >= 2 && /^\d+$/.test(parts[0])) {
     const secondPart = parts[1].toLowerCase();
     const thirdPart = parts.length >= 3 ? parts[2].toLowerCase() : '';
     
@@ -134,8 +134,13 @@ export function normalizeNYCAddress(address: string): string {
       // Second part is a street type, so first is building number
       buildingNumber = parts[0];
       streetParts = parts.slice(1);
+    } else if (!/^\d+$/.test(secondPart)) {
+      // Second part is NOT a number and NOT a street type, so first part is likely building number
+      // (e.g., "751 Briggs Highway" - "Briggs" is not a number, so 751 is building number)
+      buildingNumber = parts[0];
+      streetParts = parts.slice(1);
     } else {
-      // First part might be building number, but we're not sure, include it in street parts
+      // Fallback: keep all parts in street name
       streetParts = parts;
     }
   } else if (parts.length >= 1 && /^\d+/.test(parts[0])) {
@@ -177,10 +182,19 @@ export function normalizeNYCAddress(address: string): string {
     if ((isLast || isSecondToLast) && STREET_ABBREVIATIONS[part]) {
       normalizedParts.push(STREET_ABBREVIATIONS[part]);
     } else if (/^\d+$/.test(part)) {
-      // This is a plain number (like "20" in "20 Avenue") - add ordinal suffix
-      const num = parseInt(part, 10);
-      const suffix = getOrdinalSuffix(num);
-      normalizedParts.push(`${num}${suffix}`);
+      // This is a plain number - only add ordinal suffix if next part is a street type
+      // (like "20" in "20 Avenue", but NOT "751" in "751 Briggs")
+      const nextPartIsStreetType = nextPart && STREET_ABBREVIATIONS[nextPart];
+      
+      if (nextPartIsStreetType) {
+        // Numbered street - add ordinal suffix
+        const num = parseInt(part, 10);
+        const suffix = getOrdinalSuffix(num);
+        normalizedParts.push(`${num}${suffix}`);
+      } else {
+        // Just a number in the street name (like in "Route 9"), keep as is
+        normalizedParts.push(part);
+      }
     } else {
       // Capitalize first letter of each word
       normalizedParts.push(part.charAt(0).toUpperCase() + part.slice(1));
