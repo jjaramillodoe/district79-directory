@@ -1,4 +1,4 @@
-import { AlertCircle, ChevronDown, ChevronUp, Download, Lightbulb, Search } from 'lucide-react';
+import { AlertCircle, ChevronDown, ChevronUp, Download, Lightbulb, MapPin, Search } from 'lucide-react';
 interface Props {
   open: boolean;
   onToggle: () => void;

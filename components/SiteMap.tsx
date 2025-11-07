@@ -9,6 +9,7 @@ export interface Site {
   dbn: string;
   program: string;
   siteName: string;
+  status?: string;
   buildingAddress?: string;
   borough?: string;
   zipCode?: string;
@@ -288,7 +289,7 @@ export default function SiteMap({
                 </div>`
               : ''
           }
-          <div style="margin-top: 8px;">
+          <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <span style="font-size: 11px; padding: 4px 8px; border-radius: 12px; font-weight: 500; display: inline-block; ${
               props.category === 'adult-ed'
                 ? 'background-color: #DBEAFE; color: #1E40AF;'
@@ -296,6 +297,9 @@ export default function SiteMap({
             }">
               ${props.category === 'adult-ed' ? 'Adult Ed' : 'Youth'}
             </span>
+            <a href="/site/${props.id}" style="font-size: 12px; color: #2563EB; text-decoration: none; font-weight: 500; padding: 4px 0;" onMouseOver="this.style.textDecoration='underline'" onMouseOut="this.style.textDecoration='none'">
+              View Details →
+            </a>
           </div>
         </div>
       `;
@@ -413,7 +417,7 @@ export default function SiteMap({
                   </div>`
                 : ''
             }
-            <div style="margin-top: 8px;">
+            <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <span style="font-size: 11px; padding: 4px 8px; border-radius: 12px; font-weight: 500; display: inline-block; ${
                 props.category === 'adult-ed'
                   ? 'background-color: #DBEAFE; color: #1E40AF;'
@@ -421,6 +425,9 @@ export default function SiteMap({
               }">
                 ${props.category === 'adult-ed' ? 'Adult Ed' : 'Youth'}
               </span>
+              <a href="/site/${props.id}" style="font-size: 12px; color: #2563EB; text-decoration: none; font-weight: 500; padding: 4px 0;" onMouseOver="this.style.textDecoration='underline'" onMouseOut="this.style.textDecoration='none'">
+                View Details →
+              </a>
             </div>
           </div>
         `;

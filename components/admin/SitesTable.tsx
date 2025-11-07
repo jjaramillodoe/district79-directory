@@ -8,8 +8,11 @@ interface Site {
   dbn: string;
   program: string;
   siteName: string;
+  buildingAddress?: string;
+  zipCode?: string;
   borough?: string;
   category: 'adult-ed' | 'youth';
+  description?: string;
   latitude?: number | null;
   longitude?: number | null;
 }
@@ -20,9 +23,27 @@ interface SitesTableProps {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   onSort?: (column: string) => void;
+  selectedSites?: Set<string>;
+  onSelectSite?: (siteId: string) => void;
+  onSelectAll?: () => void;
+  allSitesWithoutDescriptions?: string[];
 }
 
-export default function SitesTable({ sites, onDelete, sortBy, sortOrder, onSort }: SitesTableProps) {
+export default function SitesTable({ 
+  sites, 
+  onDelete, 
+  sortBy, 
+  sortOrder, 
+  onSort,
+  selectedSites = new Set(),
+  onSelectSite,
+  onSelectAll,
+  allSitesWithoutDescriptions = []
+}: SitesTableProps) {
+  const sitesWithoutDescriptions = sites.filter(s => !s.description || s.description.trim() === '');
+  const allSelected = sitesWithoutDescriptions.length > 0 && 
+    sitesWithoutDescriptions.every(s => selectedSites.has(s._id));
+  const someSelected = sitesWithoutDescriptions.some(s => selectedSites.has(s._id));
   if (sites.length === 0) {
     return (
       <div className="text-center py-12">
@@ -37,8 +58,22 @@ export default function SitesTable({ sites, onDelete, sortBy, sortOrder, onSort 
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              {onSelectSite && (
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    ref={(input) => {
+                      if (input) input.indeterminate = someSelected && !allSelected;
+                    }}
+                    onChange={onSelectAll}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    title="Select all sites without descriptions"
+                  />
+                </th>
+              )}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Site Name
+                Site Name / Address
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Program
@@ -72,15 +107,45 @@ export default function SitesTable({ sites, onDelete, sortBy, sortOrder, onSort 
                 </div>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Description
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {sites.map((site) => (
-              <tr key={site._id} className="hover:bg-gray-50">
+            {sites.map((site) => {
+              const hasDescription = !!(site.description && site.description.trim());
+              const isSelectable = !hasDescription;
+              const isSelected = selectedSites.has(site._id);
+              
+              return (
+              <tr 
+                key={site._id} 
+                className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''}`}
+              >
+                {onSelectSite && (
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => onSelectSite(site._id)}
+                      disabled={!isSelectable}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={isSelectable ? 'Select to generate description' : 'Site already has a description'}
+                    />
+                  </td>
+                )}
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {site.siteName}
+                  <div>
+                    <span className="text-xs text-gray-500">
+                    {site.siteName}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {site.buildingAddress}, {site.borough}, NY {site.zipCode}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {site.program}
@@ -100,6 +165,17 @@ export default function SitesTable({ sites, onDelete, sortBy, sortOrder, onSort 
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {site.longitude !== null && site.longitude !== undefined ? site.longitude.toFixed(6) : '-'}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                  {site.description ? (
+                    <span className="text-xs text-gray-600 italic" title={site.description}>
+                      {site.description.length > 100 
+                        ? site.description.substring(0, 100) + '...' 
+                        : site.description}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">No description</span>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex items-center space-x-2">
@@ -124,7 +200,7 @@ export default function SitesTable({ sites, onDelete, sortBy, sortOrder, onSort 
                   </div>
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>

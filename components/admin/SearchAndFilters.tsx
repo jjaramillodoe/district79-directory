@@ -1,6 +1,6 @@
 'use client';
 
-import { Search, ArrowUpDown, X, MapPin, Download, Loader2, CheckCircle } from 'lucide-react';
+import { Search, ArrowUpDown, X, MapPin, Download, Loader2, CheckCircle, Sparkles } from 'lucide-react';
 
 interface SearchAndFiltersProps {
   searchTerm: string;
@@ -28,6 +28,12 @@ interface SearchAndFiltersProps {
   geocodingAll: boolean;
   onExportPdf: () => void;
   onUpdateYouthStatus?: () => void;
+  onGenerateDescriptionsBulk?: () => void;
+  generatingDescriptions?: boolean;
+  descriptionCount?: number;
+  onDescriptionCountChange?: (count: number) => void;
+  sitesWithoutDescriptions?: number;
+  selectedSitesCount?: number;
 }
 
 export default function SearchAndFilters({
@@ -56,6 +62,12 @@ export default function SearchAndFilters({
   geocodingAll,
   onExportPdf,
   onUpdateYouthStatus,
+  onGenerateDescriptionsBulk,
+  generatingDescriptions,
+  descriptionCount = 10,
+  onDescriptionCountChange,
+  sitesWithoutDescriptions = 0,
+  selectedSitesCount = 0,
 }: SearchAndFiltersProps) {
   return (
     <div className="bg-white rounded-lg shadow p-6 mb-6">
@@ -228,6 +240,53 @@ export default function SearchAndFilters({
               </>
             )}
           </button>
+          {onGenerateDescriptionsBulk && (
+            <div className="flex items-center gap-2">
+              {selectedSitesCount === 0 ? (
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={descriptionCount}
+                  onChange={(e) => onDescriptionCountChange?.(parseInt(e.target.value) || 10)}
+                  disabled={generatingDescriptions}
+                  className="w-20 px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed text-center"
+                  title="Number of descriptions to generate"
+                />
+              ) : (
+                <span className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg">
+                  {selectedSitesCount} selected
+                </span>
+              )}
+              <button
+                onClick={onGenerateDescriptionsBulk}
+                disabled={generatingDescriptions || (selectedSitesCount === 0 && sitesWithoutDescriptions === 0)}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                title={selectedSitesCount > 0 ? `Generate descriptions for ${selectedSitesCount} selected sites` : "Generate AI descriptions for sites without descriptions"}
+              >
+                {generatingDescriptions ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-5 w-5" />
+                    Generate Descriptions
+                    {selectedSitesCount > 0 ? (
+                      <span className="ml-1 px-2 py-0.5 bg-indigo-700 rounded-full text-xs">
+                        {selectedSitesCount}
+                      </span>
+                    ) : sitesWithoutDescriptions > 0 && (
+                      <span className="ml-1 px-2 py-0.5 bg-indigo-700 rounded-full text-xs">
+                        {sitesWithoutDescriptions}
+                      </span>
+                    )}
+                  </>
+                )}
+              </button>
+            </div>
+          )}
           <button
             onClick={onExportPdf}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"

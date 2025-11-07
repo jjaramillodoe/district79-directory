@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Footer from '@/components/Footer';
 import SiteMap, { Site } from '@/components/SiteMap';
 import { Loader2, ChevronLeft, AlertCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function MapPage() {
@@ -14,10 +15,44 @@ export default function MapPage() {
   const [selectedProgram, setSelectedProgram] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSite, setSelectedSite] = useState<string | undefined>();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Check authentication
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      console.log('🔍 Map page - Checking authentication...');
+      const response = await fetch('/api/auth/public/verify', {
+        credentials: 'include', // Important: include cookies
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('   - Map page auth response:', data);
+        
+        if (data.authenticated) {
+          setIsAuthenticated(true);
+          fetchData(); // Fetch data only if authenticated
+        } else {
+          window.location.href = '/';
+        }
+      } else {
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      window.location.href = '/';
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
   // Fetch both token and sites in parallel
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = async () => {
       try {
         setLoading(true);
         
@@ -42,17 +77,18 @@ export default function MapPage() {
           throw new Error('Failed to fetch sites');
         }
         const sitesData = await sitesResponse.json();
-        setSites(sitesData || []);
+        // Filter to show only open sites
+        const openSites = (sitesData || []).filter((site: Site) => 
+          site.status === 'Open'
+        );
+        setSites(openSites);
       } catch (err) {
         console.error('Error fetching data:', err);
         setError('Failed to load map data. Please check your configuration.');
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchData();
-  }, []);
+  };
 
   // Filter sites with valid coordinates
   const sitesWithCoordinates = useMemo(
@@ -92,6 +128,17 @@ export default function MapPage() {
   );
 
   // Loading state
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

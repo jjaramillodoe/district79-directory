@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import Footer from '@/components/Footer';
-import { BarChart3, Users, MapPin, TrendingUp } from 'lucide-react';
+import { BarChart3, Users, MapPin, TrendingUp, Loader2 } from 'lucide-react';
 
 // Dynamically import charts to avoid SSR issues
 const RechartsBarChart = dynamic(() => Promise.resolve((props: any) => (
@@ -57,16 +57,50 @@ interface Site {
 export default function AnalyticsPage() {
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    fetchSites();
+    checkAuth();
   }, []);
+
+  const checkAuth = async () => {
+    try {
+      console.log('🔍 Analytics page - Checking authentication...');
+      const response = await fetch('/api/auth/public/verify', {
+        credentials: 'include', // Important: include cookies
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('   - Analytics page auth response:', data);
+        
+        if (data.authenticated) {
+          setIsAuthenticated(true);
+          fetchSites(); // Fetch data only if authenticated
+        } else {
+          window.location.href = '/';
+        }
+      } else {
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      window.location.href = '/';
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
   const fetchSites = async () => {
     try {
       const response = await fetch('/api/sites');
       const data = await response.json();
-      setSites(data);
+      // Filter to show only open sites
+      const openSites = data.filter((site: Site) => 
+        site.status === 'Open'
+      );
+      setSites(openSites);
     } catch (error) {
       console.error('Error fetching sites:', error);
     } finally {
@@ -118,12 +152,23 @@ export default function AnalyticsPage() {
     { name: 'Unknown', value: totalSites - openSites - closedSites, color: '#6B7280' },
   ];
 
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading analytics...</p>
+          <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading analytics...</p>
         </div>
       </div>
     );
@@ -143,7 +188,7 @@ export default function AnalyticsPage() {
               <p className="text-gray-600 mt-1">Insights and statistics about District 79 sites</p>
             </div>
             <a 
-              href="/" 
+              href="/home" 
               className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

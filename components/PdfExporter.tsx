@@ -143,6 +143,77 @@ export default function PdfExporter({ sites, pdfGroupBy, selectedBorough, select
       ];
     };
 
+    const addSectionHeader = (programName: string, principalName?: string, principalEmail?: string, phoneNumber?: string) => {
+      const pageWidth = doc.internal.pageSize.getWidth();
+      if (startY > 180) { doc.addPage(); startY = 15; }
+      
+      // Main title with program name
+      doc.setFontSize(16);
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      const titleHeight = 8;
+      doc.setFillColor(37, 99, 235);
+      doc.rect(20, startY - 5, pageWidth - 40, titleHeight, 'F');
+      doc.text(programName, pageWidth / 2, startY, { align: 'center' } as any);
+      doc.setFont('helvetica', 'normal');
+      startY += 8;
+
+      // Principal info below the title
+      const infoLines: string[] = [];
+      if (principalName && principalName !== 'No Principal') {
+        infoLines.push(`Principal: ${principalName}`);
+      }
+      if (principalEmail) {
+        infoLines.push(`Email: ${principalEmail}`);
+      }
+      if (phoneNumber) {
+        infoLines.push(`Phone: ${phoneNumber}`);
+      }
+
+      if (infoLines.length > 0) {
+        doc.setFontSize(9);
+        doc.setTextColor(0, 0, 0);
+        infoLines.forEach((line, index) => {
+          doc.text(line, pageWidth / 2, startY + (index * 5), { align: 'center' } as any);
+        });
+        startY += (infoLines.length * 5) + 5;
+      } else {
+        startY += 3;
+      }
+    };
+
+    // Helper function to group sites by principal and add sections
+    const groupByPrincipalAndAddSections = (programName: string, programSites: Site[]) => {
+      const principalGroups: Record<string, Site[]> = {};
+      programSites.forEach((site) => {
+        const principalKey = site.principal || 'No Principal';
+        principalGroups[principalKey] = principalGroups[principalKey] || [];
+        principalGroups[principalKey].push(site);
+      });
+      
+      const sortedPrincipals = Object.keys(principalGroups).sort();
+      sortedPrincipals.forEach((principal) => {
+        const principalSites = principalGroups[principal];
+        const firstSite = principalSites[0];
+        
+        // Get principal email (handle multiple emails separated by /)
+        let principalEmail = firstSite.principalEmail;
+        if (principalEmail && principalEmail.includes('/')) {
+          principalEmail = principalEmail.split('/')[0].trim();
+        }
+        
+        // Get phone number from first site
+        const phoneNumber = firstSite.businessPhone;
+        
+        const sectionTitle = principal === 'No Principal' 
+          ? programName 
+          : `${programName} - ${principal}`;
+        
+        addSectionHeader(sectionTitle, principal === 'No Principal' ? undefined : principal, principalEmail, phoneNumber);
+        addRows(principalSites.map(buildRow));
+      });
+    };
+
     if (pdfGroupBy === 'program') {
       const grouped: Record<string, Site[]> = {};
       sites.forEach((s) => {
@@ -150,21 +221,29 @@ export default function PdfExporter({ sites, pdfGroupBy, selectedBorough, select
         grouped[s.program].push(s);
       });
       const sortedPrograms = Object.keys(grouped).sort();
-      const pageWidth = doc.internal.pageSize.getWidth();
       sortedPrograms.forEach((program) => {
         const programSites = grouped[program];
-        if (startY > 180) { doc.addPage(); startY = 15; }
-        doc.setFontSize(16);
-        doc.setTextColor(255, 255, 255);
-        doc.setFont('helvetica', 'bold');
-        const titleHeight = 8;
-        doc.setFillColor(37, 99, 235);
-        doc.rect(20, startY - 5, pageWidth - 40, titleHeight, 'F');
-        doc.text(program, pageWidth / 2, startY, { align: 'center' } as any);
-        doc.setFont('helvetica', 'normal');
-        startY += 8;
-
-        addRows(programSites.map(buildRow));
+        
+        // Special handling for programs that should be split by principal name
+        if (program === 'Passages Academy' || program === 'Pathways to Graduation' || program === 'Path to Graduation') {
+          groupByPrincipalAndAddSections(program, programSites);
+        } else {
+          // Regular program grouping
+          const firstSite = programSites[0];
+          
+          // Get principal email (handle multiple emails separated by /)
+          let principalEmail = firstSite.principalEmail;
+          if (principalEmail && principalEmail.includes('/')) {
+            principalEmail = principalEmail.split('/')[0].trim();
+          }
+          
+          // Get phone number from first site
+          const phoneNumber = firstSite.businessPhone;
+          const principalName = firstSite.principal;
+          
+          addSectionHeader(program, principalName, principalEmail, phoneNumber);
+          addRows(programSites.map(buildRow));
+        }
       });
     } else {
       if (startY > 180) { doc.addPage(); startY = 15; }

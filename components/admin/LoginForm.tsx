@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { Lock } from 'lucide-react';
+import { Lock, Building2 } from 'lucide-react';
 
 interface LoginFormProps {
   onLogin: (password: string) => Promise<void>;
@@ -25,18 +25,27 @@ export default function LoginForm({ onLogin, error, password: externalPassword, 
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+      <div className="max-w-md w-full bg-white rounded-xl shadow-2xl p-8">
         <div className="text-center mb-8">
-          <Lock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900">Admin Login</h2>
-          <p className="text-gray-600 mt-2">Enter your password to access the admin panel</p>
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
+            <Building2 className="h-8 w-8 text-white" />
+          </div>
+          <h2 className="text-3xl font-bold text-gray-900">District 79 Directory</h2>
+          <p className="text-gray-600 mt-2">NYC Department of Education</p>
+          <p className="text-sm text-gray-500 mt-4">Admin Access</p>
         </div>
+
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Password
+              Admin Password
             </label>
             <input
               type="password"
@@ -49,12 +58,6 @@ export default function LoginForm({ onLogin, error, password: externalPassword, 
               disabled={isLoading}
             />
           </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )}
 
           <button
             type="submit"

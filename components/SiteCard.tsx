@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Home, MapPin, Phone, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Home, MapPin, Phone, AlertCircle, ExternalLink } from 'lucide-react';
 import { Copy, Check } from 'lucide-react';
 
 export interface Site {
@@ -173,7 +174,14 @@ export default function SiteCard({ site, onReportChanges }: SiteCardProps) {
         }
       })()}
 
-      <div className="mt-4 pt-4 border-t border-gray-200">
+      <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+        <Link
+          href={`/site/${site._id}`}
+          className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+        >
+          <ExternalLink className="h-4 w-4" />
+          Site Details
+        </Link>
         <button
           onClick={() => onReportChanges(site)}
           className="w-full px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"

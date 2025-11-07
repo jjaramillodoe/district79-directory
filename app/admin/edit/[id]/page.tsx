@@ -28,6 +28,7 @@ interface Site {
   hasSaturdayProgram?: string;
   saturdayHours?: string;
   subject?: string;
+  description?: string;
   latitude?: number | null;
   longitude?: number | null;
 }
@@ -42,6 +43,7 @@ export default function EditSitePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [geocoding, setGeocoding] = useState(false);
+  const [generatingDescription, setGeneratingDescription] = useState(false);
   const [showBoroughSuggestions, setShowBoroughSuggestions] = useState(false);
   
   const boroughSuggestions = ['Manhattan', 'Brooklyn', 'Queens', 'Bronx', 'Staten Island', 'Dobbs Ferry', 'Yonkers', 'Buffalo', 'Rochester', 'Albany'];
@@ -211,6 +213,45 @@ export default function EditSitePage() {
     }
   };
 
+  const handleGenerateDescription = async () => {
+    if (!site?.siteName || !site?.program) {
+      setError('Site name and program are required to generate description');
+      return;
+    }
+
+    setGeneratingDescription(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/generate-description', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          siteName: site.siteName,
+          program: site.program,
+          address: site.buildingAddress,
+          borough: site.borough,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.description) {
+        setSite({
+          ...site,
+          description: data.description,
+        });
+      } else {
+        setError(data.error || 'Could not generate description');
+      }
+    } catch (error) {
+      setError('Failed to generate description. Please try again.');
+      console.error('Description generation error:', error);
+    } finally {
+      setGeneratingDescription(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
@@ -334,6 +375,47 @@ export default function EditSitePage() {
                 onChange={(e) => handleChange('subject', e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+
+            {/* Description */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <div className="flex items-start gap-2">
+                <textarea
+                  value={site.description || ''}
+                  onChange={(e) => handleChange('description', e.target.value)}
+                  rows={4}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                  placeholder="Site description will appear here..."
+                />
+                <button
+                  type="button"
+                  onClick={handleGenerateDescription}
+                  disabled={generatingDescription || !site.siteName || !site.program}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap flex items-center gap-2"
+                  title="Generate description using AI based on site name and address"
+                >
+                  {generatingDescription ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                      Generate
+                    </>
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                AI-generated description based on site name, program, and address. You can edit the generated description.
+              </p>
             </div>
 
             {/* Address Information */}

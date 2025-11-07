@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { Upload, MapPin, Loader2 } from 'lucide-react';
 import Footer from '@/components/Footer';
 import AdminHeader from '@/components/admin/AdminHeader';
 import LoginForm from '@/components/admin/LoginForm';
@@ -31,6 +33,7 @@ interface Site {
   eveningDays?: string;
   eveningHours?: string;
   saturdayHours?: string;
+  description?: string;
   latitude?: number | null;
   longitude?: number | null;
 }
@@ -53,8 +56,14 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [geocodingAll, setGeocodingAll] = useState(false);
+  const [generatingDescriptions, setGeneratingDescriptions] = useState(false);
+  const [descriptionCount, setDescriptionCount] = useState(10);
+  const [selectedSites, setSelectedSites] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
   const [changeRequests, setChangeRequests] = useState<any[]>([]);
   const [showChangeRequests, setShowChangeRequests] = useState(false);
+  const [normalizingAddresses, setNormalizingAddresses] = useState(false);
+  const [normalizeStatus, setNormalizeStatus] = useState<string>('');
 
   useEffect(() => {
     checkAuth();
@@ -62,13 +71,23 @@ export default function AdminPage() {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('/api/auth/verify');
+      // Check admin authentication only
+      // Public users with Google OAuth can still access this page to see the login form
+      // They just need to use password authentication to access admin features
+      const response = await fetch('/api/auth/verify', {
+        credentials: 'include',
+      });
       const data = await response.json();
       if (data.authenticated) {
+        // User is authenticated as admin (has admin_token cookie)
         setIsAuthenticated(true);
         fetchSites();
         fetchChangeRequests();
       } else {
+        // Not authenticated as admin - show login form
+        // This could be:
+        // 1. No authentication at all
+        // 2. Public user with user_token (can still see login form and use password)
         setLoading(false);
       }
     } catch (error) {
@@ -238,6 +257,43 @@ export default function AdminPage() {
     setEditedSite(null);
   };
 
+  const handleNormalizeAddresses = async () => {
+    if (!confirm('This will normalize all addresses in the database. Continue?')) {
+      return;
+    }
+
+    setNormalizingAddresses(true);
+    setNormalizeStatus('Normalizing addresses...');
+
+    try {
+      const response = await fetch('/api/sites/normalize-addresses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: selectedCategory === 'all' ? 'all' : selectedCategory,
+          dryRun: false,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setNormalizeStatus(
+          `✅ Successfully normalized ${data.updated} addresses out of ${data.total} total`
+        );
+        fetchSites(); // Refresh sites
+      } else {
+        setNormalizeStatus(`❌ Error: ${data.error || 'Failed to normalize addresses'}`);
+      }
+    } catch (error) {
+      console.error('Normalize addresses error:', error);
+      setNormalizeStatus('❌ Failed to normalize addresses');
+    } finally {
+      setNormalizingAddresses(false);
+      setTimeout(() => setNormalizeStatus(''), 5000);
+    }
+  };
+
   const handleGeocodeAll = async () => {
     const sitesWithoutCoords = sites.filter(s => !s.latitude || !s.longitude).length;
     const totalSites = sites.length;
@@ -284,6 +340,79 @@ export default function AdminPage() {
       setUploadStatus('❌ Failed to geocode sites. Please try again.');
     } finally {
       setGeocodingAll(false);
+    }
+  };
+
+  const handleGenerateDescriptionsBulk = async () => {
+    const selectedSiteIds = Array.from(selectedSites);
+    const count = selectedSiteIds.length > 0 ? selectedSiteIds.length : descriptionCount;
+    
+    if (selectedSiteIds.length > 0) {
+      if (!confirm(`This will generate descriptions for ${selectedSiteIds.length} selected site(s).\n\nThis may take several minutes due to API rate limiting.\n\nContinue?`)) {
+        return;
+      }
+    } else {
+      if (!confirm(`This will generate descriptions for ${descriptionCount} site(s) that don't have descriptions yet.\n\nThis may take several minutes due to API rate limiting.\n\nContinue?`)) {
+        return;
+      }
+    }
+
+    setGeneratingDescriptions(true);
+    setUploadStatus(`Generating ${count} descriptions... This may take a few minutes.`);
+
+    try {
+      const response = await fetch('/api/generate-descriptions-bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          count: selectedSiteIds.length > 0 ? selectedSiteIds.length : descriptionCount,
+          siteIds: selectedSiteIds.length > 0 ? selectedSiteIds : undefined
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setUploadStatus(`✅ Generated ${data.generated} out of ${data.total} descriptions successfully!`);
+        if (data.results) {
+          const failed = data.results.filter((r: any) => !r.success).length;
+          if (failed > 0) {
+            setUploadStatus(`✅ Generated ${data.generated} descriptions. ${failed} failed. Check console for details.`);
+            console.log('Generation results:', data.results);
+          }
+        }
+        setSelectedSites(new Set()); // Clear selection after generation
+        fetchSites();
+        
+        // Clear the status message after 10 seconds
+        setTimeout(() => setUploadStatus(''), 10000);
+      } else {
+        setUploadStatus(`❌ Error: ${data.error || 'Failed to generate descriptions'}`);
+      }
+    } catch (error) {
+      console.error('Description generation error:', error);
+      setUploadStatus('❌ Failed to generate descriptions. Please try again.');
+    } finally {
+      setGeneratingDescriptions(false);
+    }
+  };
+
+  const handleSelectSite = (siteId: string) => {
+    const newSelected = new Set(selectedSites);
+    if (newSelected.has(siteId)) {
+      newSelected.delete(siteId);
+    } else {
+      newSelected.add(siteId);
+    }
+    setSelectedSites(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    const sitesWithoutDescriptions = sortedSites.filter(s => !s.description || s.description.trim() === '');
+    if (selectedSites.size === sitesWithoutDescriptions.length) {
+      setSelectedSites(new Set());
+    } else {
+      setSelectedSites(new Set(sitesWithoutDescriptions.map(s => s._id)));
     }
   };
 
@@ -619,6 +748,18 @@ export default function AdminPage() {
   const sitesWithoutCoords = sites.filter(s => !s.latitude || !s.longitude).length;
   const hasActiveFilters = selectedCategory !== 'all' || selectedBorough !== 'all' || selectedProgram !== 'all' || searchTerm !== '';
 
+  // Pagination
+  const itemsPerPage = 25;
+  const totalPages = Math.ceil(sortedSites.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedSites = sortedSites.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, selectedBorough, selectedProgram, searchTerm, sortBy, sortOrder]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -664,6 +805,42 @@ export default function AdminPage() {
           />
         )}
         
+        <div className="mb-6 flex gap-4 flex-wrap">
+          <Link
+            href="/admin/import"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Upload className="h-5 w-5 mr-2" />
+            Import CSV with Preview
+          </Link>
+          
+          <button
+            onClick={handleNormalizeAddresses}
+            disabled={normalizingAddresses}
+            className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {normalizingAddresses ? (
+              <>
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                Normalizing...
+              </>
+            ) : (
+              <>
+                <MapPin className="h-5 w-5 mr-2" />
+                Normalize All Addresses
+              </>
+            )}
+          </button>
+        </div>
+
+        {normalizeStatus && (
+          <div className={`mb-4 p-4 rounded-lg ${
+            normalizeStatus.startsWith('✅') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+          }`}>
+            {normalizeStatus}
+          </div>
+        )}
+        
         <UploadSection
           onFileUpload={handleFileUpload}
           uploading={uploading}
@@ -701,10 +878,16 @@ export default function AdminPage() {
           geocodingAll={geocodingAll}
           onExportPdf={handleExportPdf}
           onUpdateYouthStatus={handleUpdateYouthStatus}
+          onGenerateDescriptionsBulk={handleGenerateDescriptionsBulk}
+          generatingDescriptions={generatingDescriptions}
+          descriptionCount={descriptionCount}
+          onDescriptionCountChange={setDescriptionCount}
+          sitesWithoutDescriptions={sites.filter(s => !s.description || s.description.trim() === '').length}
+          selectedSitesCount={selectedSites.size}
         />
 
         <SitesTable
-          sites={sortedSites}
+          sites={paginatedSites}
           onDelete={handleDelete}
           sortBy={sortBy}
           sortOrder={sortOrder}
@@ -716,7 +899,65 @@ export default function AdminPage() {
               setSortOrder('asc');
             }
           }}
+          selectedSites={selectedSites}
+          onSelectSite={handleSelectSite}
+          onSelectAll={handleSelectAll}
+          allSitesWithoutDescriptions={sortedSites.filter(s => !s.description || s.description.trim() === '').map(s => s._id)}
         />
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between bg-white rounded-lg shadow p-4">
+            <div className="text-sm text-gray-700">
+              Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+              <span className="font-medium">{Math.min(endIndex, sortedSites.length)}</span> of{' '}
+              <span className="font-medium">{sortedSites.length}</span> sites
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-2 border rounded-lg ${
+                        currentPage === pageNum
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
         
         {sortedSites.length === 0 && (
           <div className="text-center py-12">
