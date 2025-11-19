@@ -501,7 +501,8 @@ export default function AdminPage() {
         { title: 'Superintendent', name: 'Glenda Esperance' },
         { title: 'Deputy Superintendent', name: 'Jerry Brito' },
         { title: 'Executive Director', name: 'Veronica Pichardo' },
-        { title: 'Executive Director', name: 'Annette Knox' }
+        { title: 'Executive Director', name: 'Annette Knox' },
+        { title: 'Director of Student Services', name: 'Ben Maeda' }
       ];
       
       teamMembers.forEach((member) => {
