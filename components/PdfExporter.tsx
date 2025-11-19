@@ -225,7 +225,8 @@ export default function PdfExporter({ sites, pdfGroupBy, selectedBorough, select
         const programSites = grouped[program];
         
         // Special handling for programs that should be split by principal name
-        if (program === 'Passages Academy' || program === 'Pathways to Graduation' || program === 'Path to Graduation') {
+        // Passages Academy, Pathways to Graduation, Path to Graduation, Alternative Learning Centers
+        if (program === 'Passages Academy' || program === 'Pathways to Graduation' || program === 'Path to Graduation' || program === 'Alternative Learning Centers') {
           groupByPrincipalAndAddSections(program, programSites);
         } else {
           // Regular program grouping

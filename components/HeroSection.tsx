@@ -22,6 +22,11 @@ const executives = [
     image: <UserSquare className="h-12 w-12 text-white" />,
   },
   {
+    name: 'Ben Maeda',
+    title: 'Director of Student Services',
+    image: <UserSquare className="h-12 w-12 text-white" />,
+  },
+  {
     name: 'Stacey Oliger',
     title: 'Director of Communications',
     image: <UserSquare className="h-12 w-12 text-white" />,
