@@ -226,7 +226,7 @@ export default function PdfExporter({ sites, pdfGroupBy, selectedBorough, select
         
         // Special handling for programs that should be split by principal name
         // Passages Academy, Pathways to Graduation, Path to Graduation, Alternative Learning Centers
-        if (program === 'Passages Academy' || program === 'Pathways to Graduation' || program === 'Path to Graduation' || program === 'Alternative Learning Centers') {
+        if (program === 'Passages Academy' || program === 'Pathways to Graduation' || program === 'Path to Graduation' || program === 'Alternate Learning Centers') {
           groupByPrincipalAndAddSections(program, programSites);
         } else {
           // Regular program grouping
