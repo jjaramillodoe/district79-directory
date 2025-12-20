@@ -113,7 +113,7 @@ export default function SiteCard({ site, onReportChanges }: SiteCardProps) {
                     if (maxLen === 0) {
                       return <div className="text-gray-500">N/A</div>;
                     }
-                    const rows = [] as JSX.Element[];
+                    const rows = [] as React.ReactElement[];
                     for (let i = 0; i < maxLen; i++) {
                       const name = names[i];
                       const email = emails[i];
