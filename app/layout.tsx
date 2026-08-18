@@ -68,9 +68,9 @@ export default function RootLayout({
                 <Link href="/terms-of-service" className="hover:text-d79-blue">
                   Terms of Service
                 </Link>
-                <a href="mailto:jjaramillo7@schools.nyc.gov" className="hover:text-d79-blue">
+                <Link href="/support" className="hover:text-d79-blue">
                   Support
-                </a>
+                </Link>
               </div>
             </div>
           </footer>
