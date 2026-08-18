@@ -502,7 +502,7 @@ export default function AdminPage() {
         { title: 'Deputy Superintendent', name: 'Jerry Brito' },
         { title: 'Executive Director', name: 'Veronica Pichardo' },
         { title: 'Executive Director', name: 'Annette Knox' },
-        { title: 'Director of Student Services', name: 'Ben Maeda' }
+        { title: 'Director of Student Services', name: 'Ben Meade' }
       ];
       
       teamMembers.forEach((member) => {
