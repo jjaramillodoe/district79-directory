@@ -1,8 +1,6 @@
 import { ImageResponse } from '@vercel/og';
 import { NextRequest } from 'next/server';
 
-export const runtime = 'edge';
-
 /**
  * Generates Open Graph image dynamically
  * Usage: /api/og?title=Your+Title

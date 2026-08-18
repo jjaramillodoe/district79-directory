@@ -2,7 +2,7 @@ export default function Footer() {
   return (
     <footer className="bg-gray-800 text-white py-6 mt-16">
       <div className="max-w-7xl mx-auto px-4 text-center text-sm">
-        <p className="text-gray-400">© 2025 District 79</p>
+        <p className="text-gray-400">© {new Date().getFullYear()} NYC Public Schools - District 79 | All rights reserved.</p>
         <p className="text-gray-500 mt-1">
           Developed by Javier Jaramillo |{' '}
           <a 
