@@ -10,6 +10,7 @@ interface StaticMapProps {
   mapboxToken: string;
   zoom?: number;
   siteName?: string;
+  markerColor?: string;
 }
 
 export default function StaticMap({
@@ -18,6 +19,7 @@ export default function StaticMap({
   mapboxToken,
   zoom = 14,
   siteName,
+  markerColor = '#003F87',
 }: StaticMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -53,7 +55,7 @@ export default function StaticMap({
     el.style.width = '32px';
     el.style.height = '32px';
     el.style.borderRadius = '50%';
-    el.style.backgroundColor = '#EF4444';
+    el.style.backgroundColor = markerColor;
     el.style.border = '3px solid #FFFFFF';
     el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
     el.style.cursor = 'pointer';
@@ -73,13 +75,13 @@ export default function StaticMap({
         map.current = null;
       }
     };
-  }, [latitude, longitude, mapboxToken, zoom]);
+  }, [latitude, longitude, mapboxToken, zoom, markerColor]);
 
   return (
     <div
       ref={mapContainer}
-      className="w-full h-full rounded-lg overflow-hidden"
-      style={{ minHeight: '400px' }}
+      className="h-full w-full overflow-hidden"
+      style={{ minHeight: '100%' }}
     />
   );
 }

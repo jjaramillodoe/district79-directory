@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Footer from '@/components/Footer';
+import { joinNamedPhones, parseNamedPhones } from '@/lib/staff';
 
 interface Site {
   _id: string;
@@ -21,6 +22,8 @@ interface Site {
   apEmail?: string;
   principal?: string;
   principalEmail?: string;
+  siteSupervisor?: string;
+  siteSupervisorPhone?: string;
   daytimeDays?: string;
   daytimeHours?: string;
   eveningDays?: string;
@@ -29,6 +32,8 @@ interface Site {
   saturdayHours?: string;
   subject?: string;
   description?: string;
+  descriptionSource?: 'template' | 'ai' | 'manual';
+  descriptionFactsKey?: string;
   latitude?: number | null;
   longitude?: number | null;
 }
@@ -39,6 +44,7 @@ export default function EditSitePage() {
   const id = params?.id as string;
 
   const [site, setSite] = useState<Site | null>(null);
+  const [supervisorRows, setSupervisorRows] = useState<{ name: string; phone: string }[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -107,9 +113,10 @@ export default function EditSitePage() {
 
   const handleChange = (field: keyof Site, value: string | number | null) => {
     if (site) {
-      // Handle latitude and longitude separately as they can be numbers or null
       if (field === 'latitude' || field === 'longitude') {
         setSite({ ...site, [field]: value === '' ? null : (typeof value === 'string' ? parseFloat(value) : value) });
+      } else if (field === 'description') {
+        setSite({ ...site, description: value as string, descriptionSource: 'manual' });
       } else {
         setSite({ ...site, [field]: value as string });
       }
@@ -174,6 +181,35 @@ export default function EditSitePage() {
     });
   };
 
+  const getSiteSupervisors = () => {
+    if (supervisorRows) return supervisorRows;
+    return parseNamedPhones(site?.siteSupervisor, site?.siteSupervisorPhone);
+  };
+
+  const persistSupervisors = (rows: { name: string; phone: string }[]) => {
+    setSupervisorRows(rows);
+    const { names, phones } = joinNamedPhones(rows);
+    setSite((current) =>
+      current
+        ? { ...current, siteSupervisor: names, siteSupervisorPhone: phones }
+        : current
+    );
+  };
+
+  const updateSiteSupervisor = (index: number, field: 'name' | 'phone', value: string) => {
+    const current = getSiteSupervisors();
+    const next = current.map((row, i) => (i === index ? { ...row, [field]: value } : row));
+    persistSupervisors(next);
+  };
+
+  const addSiteSupervisor = () => {
+    persistSupervisors([...getSiteSupervisors(), { name: '', phone: '' }]);
+  };
+
+  const removeSiteSupervisor = (index: number) => {
+    persistSupervisors(getSiteSupervisors().filter((_, i) => i !== index));
+  };
+
   const handleGeocode = async () => {
     if (!site?.buildingAddress) {
       setError('Please enter a building address first');
@@ -213,7 +249,7 @@ export default function EditSitePage() {
     }
   };
 
-  const handleGenerateDescription = async () => {
+  const handleGenerateDescription = async (mode: 'template' | 'ai' = 'template') => {
     if (!site?.siteName || !site?.program) {
       setError('Site name and program are required to generate description');
       return;
@@ -231,6 +267,13 @@ export default function EditSitePage() {
           program: site.program,
           address: site.buildingAddress,
           borough: site.borough,
+          category: site.category,
+          daytimeDays: site.daytimeDays,
+          daytimeHours: site.daytimeHours,
+          eveningDays: site.eveningDays,
+          eveningHours: site.eveningHours,
+          saturdayHours: site.saturdayHours,
+          mode,
         }),
       });
 
@@ -240,6 +283,8 @@ export default function EditSitePage() {
         setSite({
           ...site,
           description: data.description,
+          descriptionSource: data.descriptionSource || mode,
+          descriptionFactsKey: data.descriptionFactsKey,
         });
       } else {
         setError(data.error || 'Could not generate description');
@@ -380,41 +425,33 @@ export default function EditSitePage() {
             {/* Description */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-              <div className="flex items-start gap-2">
-                <textarea
-                  value={site.description || ''}
-                  onChange={(e) => handleChange('description', e.target.value)}
-                  rows={4}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-                  placeholder="Site description will appear here..."
-                />
+              <textarea
+                value={site.description || ''}
+                onChange={(e) => handleChange('description', e.target.value)}
+                rows={4}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                placeholder="Site description will appear here..."
+              />
+              <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={handleGenerateDescription}
+                  onClick={() => handleGenerateDescription('template')}
                   disabled={generatingDescription || !site.siteName || !site.program}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap flex items-center gap-2"
-                  title="Generate description using AI based on site name and address"
+                  className="px-4 py-2 bg-d79-navy text-white rounded-lg hover:bg-d79-blue disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
-                  {generatingDescription ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                      Generate
-                    </>
-                  )}
+                  {generatingDescription ? 'Generating...' : 'Fill from site details'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleGenerateDescription('ai')}
+                  disabled={generatingDescription || !site.siteName || !site.program}
+                  className="px-4 py-2 border border-slate-200 bg-white text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  Write with AI
                 </button>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                AI-generated description based on site name, program, and address. You can edit the generated description.
+                Fill from site details is free and stays in sync on CSV import. Write with AI is optional and kept until you replace it.
               </p>
             </div>
 
@@ -628,6 +665,65 @@ export default function EditSitePage() {
               </div>
               <p className="text-xs text-gray-500 mt-2">
                 Each assistant principal will be automatically separated by "/" when saved.
+              </p>
+            </div>
+
+            {/* Site Supervisors - Dynamic Fields */}
+            <div className="md:col-span-2">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">Site Supervisor(s)</label>
+                <button
+                  type="button"
+                  onClick={addSiteSupervisor}
+                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" />
+                  </svg>
+                  Add supervisor
+                </button>
+              </div>
+              
+              <div className="space-y-3">
+                {getSiteSupervisors().length === 0 ? (
+                  <div className="text-sm text-gray-500 italic p-3 border border-gray-200 rounded-lg bg-gray-50">
+                    No site supervisors. Click &quot;Add supervisor&quot; to add one.
+                  </div>
+                ) : (
+                  getSiteSupervisors().map((supervisor, index) => (
+                    <div key={index} className="flex gap-2 items-start p-3 border border-gray-300 rounded-lg bg-gray-50">
+                      <div className="flex-1 space-y-2">
+                        <input
+                          type="text"
+                          value={supervisor.name}
+                          onChange={(e) => updateSiteSupervisor(index, 'name', e.target.value)}
+                          placeholder="Site supervisor name"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        />
+                        <input
+                          type="tel"
+                          value={supervisor.phone}
+                          onChange={(e) => updateSiteSupervisor(index, 'phone', e.target.value)}
+                          placeholder="Phone number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeSiteSupervisor(index)}
+                        className="mt-2 text-red-600 hover:text-red-800 p-2"
+                        title="Remove"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Each site supervisor will be automatically separated by &quot;/&quot; when saved.
               </p>
             </div>
 

@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Loader2, Plus, Trash2, X } from 'lucide-react';
+import { joinNamedPhones, parseNamedPhones, type NamedPhone } from '@/lib/staff';
 
 interface Site {
   _id: string;
@@ -11,6 +13,8 @@ interface Site {
   eveningDays?: string;
   eveningHours?: string;
   saturdayHours?: string;
+  siteSupervisor?: string;
+  siteSupervisorPhone?: string;
 }
 
 interface ChangeRequestModalProps {
@@ -19,21 +23,93 @@ interface ChangeRequestModalProps {
   onClose: () => void;
 }
 
+const emptyForm = (site: Site) => ({
+  businessPhone: site.businessPhone || '',
+  daytimeDays: site.daytimeDays || '',
+  daytimeHours: site.daytimeHours || '',
+  eveningDays: site.eveningDays || '',
+  eveningHours: site.eveningHours || '',
+  saturdayHours: site.saturdayHours || '',
+  contactName: '',
+  contactEmail: '',
+  contactPhone: '',
+  notes: '',
+});
+
+const emptySupervisors = (site: Site): NamedPhone[] => {
+  const parsed = parseNamedPhones(site.siteSupervisor, site.siteSupervisorPhone);
+  return parsed.length > 0 ? parsed : [{ name: '', phone: '' }];
+};
+
+function Field({
+  label,
+  name,
+  value,
+  current,
+  onChange,
+  placeholder,
+  type = 'text',
+  required = false,
+}: {
+  label: string;
+  name: string;
+  value: string;
+  current?: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  placeholder?: string;
+  type?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
+        {label}
+        {required && <span className="ml-0.5 text-red-500">*</span>}
+      </span>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        required={required}
+        placeholder={placeholder}
+        className="select-field"
+      />
+      {current !== undefined && (
+        <span className="mt-1 block text-xs text-slate-400">Current: {current || 'Not provided'}</span>
+      )}
+    </label>
+  );
+}
+
 export default function ChangeRequestModal({ site, isOpen, onClose }: ChangeRequestModalProps) {
-  const [formData, setFormData] = useState({
-    businessPhone: site.businessPhone || '',
-    daytimeDays: site.daytimeDays || '',
-    daytimeHours: site.daytimeHours || '',
-    eveningDays: site.eveningDays || '',
-    eveningHours: site.eveningHours || '',
-    saturdayHours: site.saturdayHours || '',
-    contactName: '',
-    contactEmail: '',
-    contactPhone: '',
-    notes: '',
-  });
+  const [formData, setFormData] = useState(() => emptyForm(site));
+  const [supervisors, setSupervisors] = useState<NamedPhone[]>(() => emptySupervisors(site));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(emptyForm(site));
+      setSupervisors(emptySupervisors(site));
+      setSubmitStatus(null);
+    }
+    // Reset when the dialog opens or the site changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, site._id]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, onClose]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +117,8 @@ export default function ChangeRequestModal({ site, isOpen, onClose }: ChangeRequ
     setSubmitStatus(null);
 
     try {
+      const { names: siteSupervisor, phones: siteSupervisorPhone } = joinNamedPhones(supervisors);
+
       const response = await fetch('/api/change-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -48,258 +126,274 @@ export default function ChangeRequestModal({ site, isOpen, onClose }: ChangeRequ
           siteId: site._id,
           siteName: site.siteName,
           ...formData,
+          siteSupervisor,
+          siteSupervisorPhone,
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setSubmitStatus({ type: 'success', message: 'Change request submitted successfully! An admin will review it shortly.' });
-        // Reset form after 2 seconds
-        setTimeout(() => {
-          setFormData({
-            businessPhone: site.businessPhone || '',
-            daytimeDays: site.daytimeDays || '',
-            daytimeHours: site.daytimeHours || '',
-            eveningDays: site.eveningDays || '',
-            eveningHours: site.eveningHours || '',
-            saturdayHours: site.saturdayHours || '',
-            contactName: '',
-            contactEmail: '',
-            contactPhone: '',
-            notes: '',
-          });
-          setTimeout(() => {
-            onClose();
-            setSubmitStatus(null);
-          }, 1000);
-        }, 2000);
+        setSubmitStatus({
+          type: 'success',
+          message: 'Change request submitted. An admin will review it shortly.',
+        });
+        setTimeout(onClose, 1600);
       } else {
         setSubmitStatus({ type: 'error', message: data.error || 'Failed to submit change request' });
       }
-    } catch (error) {
-      setSubmitStatus({ type: 'error', message: 'Failed to submit change request. Please try again.' });
+    } catch {
+      setSubmitStatus({ type: 'error', message: 'Failed to submit. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const updateSupervisor = (index: number, field: keyof NamedPhone, value: string) => {
+    setSupervisors((current) => current.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
+  };
+
+  const addSupervisor = () => {
+    setSupervisors((current) => [...current, { name: '', phone: '' }]);
+  };
+
+  const removeSupervisor = (index: number) => {
+    setSupervisors((current) => {
+      const next = current.filter((_, i) => i !== index);
+      return next.length > 0 ? next : [{ name: '', phone: '' }];
     });
   };
+
+  const currentSupervisorLabel =
+    parseNamedPhones(site.siteSupervisor, site.siteSupervisorPhone)
+      .map((s) => [s.name, s.phone].filter(Boolean).join(' · '))
+      .filter(Boolean)
+      .join(' / ') || 'Not provided';
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900">Report Changes for {site.siteName}</h2>
+    <div className="fixed inset-0 z-[60] flex items-end justify-center p-0 sm:items-center sm:p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"
+        aria-label="Close dialog"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="change-request-title"
+        className="relative flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Report changes</p>
+            <h2 id="change-request-title" className="mt-0.5 text-lg font-semibold text-d79-navy">
+              {site.siteName}
+            </h2>
+          </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            aria-label="Close"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {submitStatus && (
-            <div className={`p-4 rounded-lg ${
-              submitStatus.type === 'success' 
-                ? 'bg-green-50 text-green-800 border border-green-200' 
-                : 'bg-red-50 text-red-800 border border-red-200'
-            }`}>
-              {submitStatus.message}
-            </div>
-          )}
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
+            {submitStatus && (
+              <div
+                className={`rounded-lg px-3 py-2.5 text-sm ${
+                  submitStatus.type === 'success'
+                    ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
+                    : 'border border-red-200 bg-red-50 text-red-800'
+                }`}
+              >
+                {submitStatus.message}
+              </div>
+            )}
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800">
-              <strong>Note:</strong> Please only submit changes for phone numbers, hours, and times. Other information cannot be changed through this form.
+            <p className="rounded-lg bg-d79-sky px-3 py-2 text-sm text-d79-navy">
+              Phone numbers, hours, and site supervisors can be updated here. Admins review every request before it
+              goes live.
             </p>
-          </div>
 
-          {/* Phone Number */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Business Phone Number
-            </label>
-            <input
-              type="tel"
+            <Field
+              label="Business phone"
               name="businessPhone"
+              type="tel"
               value={formData.businessPhone}
+              current={site.businessPhone}
               onChange={handleChange}
-              placeholder={site.businessPhone || 'Enter phone number'}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g., 718-333-7455"
             />
-            <p className="text-xs text-gray-500 mt-1">Current: {site.businessPhone || 'Not provided'}</p>
-          </div>
 
-          {/* Daytime Hours */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Daytime Days of Operation
-              </label>
-              <input
-                type="text"
-                name="daytimeDays"
-                value={formData.daytimeDays}
-                onChange={handleChange}
-                placeholder={site.daytimeDays || 'e.g., Mon-Fri'}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">Current: {site.daytimeDays || 'Not provided'}</p>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Site supervisor(s)</p>
+                <button
+                  type="button"
+                  onClick={addSupervisor}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-d79-blue hover:text-d79-navy"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add supervisor
+                </button>
+              </div>
+              <div className="space-y-3 rounded-xl border border-slate-200 p-3">
+                {supervisors.map((supervisor, index) => (
+                  <div key={index} className="flex items-start gap-2">
+                    <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-2">
+                      <input
+                        type="text"
+                        value={supervisor.name}
+                        onChange={(e) => updateSupervisor(index, 'name', e.target.value)}
+                        placeholder="Supervisor name"
+                        className="select-field"
+                      />
+                      <input
+                        type="tel"
+                        value={supervisor.phone}
+                        onChange={(e) => updateSupervisor(index, 'phone', e.target.value)}
+                        placeholder="Phone number"
+                        className="select-field"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeSupervisor(index)}
+                      className="mt-2 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                      aria-label="Remove supervisor"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+                <span className="block text-xs text-slate-400">Current: {currentSupervisorLabel}</span>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Daytime Hours
-              </label>
-              <input
-                type="text"
-                name="daytimeHours"
-                value={formData.daytimeHours}
-                onChange={handleChange}
-                placeholder={site.daytimeHours || 'e.g., 9:00 AM - 3:00 PM'}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">Current: {site.daytimeHours || 'Not provided'}</p>
-            </div>
-          </div>
 
-          {/* Evening Hours */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Evening Days of Operation
-              </label>
-              <input
-                type="text"
-                name="eveningDays"
-                value={formData.eveningDays}
-                onChange={handleChange}
-                placeholder={site.eveningDays || 'e.g., Mon-Thu'}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">Current: {site.eveningDays || 'Not provided'}</p>
+              <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">Hours</p>
+              <div className="space-y-3 rounded-xl border border-slate-200 p-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field
+                    label="Daytime days"
+                    name="daytimeDays"
+                    value={formData.daytimeDays}
+                    current={site.daytimeDays}
+                    onChange={handleChange}
+                    placeholder="e.g., M, T, W, Th"
+                  />
+                  <Field
+                    label="Daytime hours"
+                    name="daytimeHours"
+                    value={formData.daytimeHours}
+                    current={site.daytimeHours}
+                    onChange={handleChange}
+                    placeholder="e.g., 4:00 PM – 8:30 PM"
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field
+                    label="Evening days"
+                    name="eveningDays"
+                    value={formData.eveningDays}
+                    current={site.eveningDays}
+                    onChange={handleChange}
+                    placeholder="e.g., Mon–Thu"
+                  />
+                  <Field
+                    label="Evening hours"
+                    name="eveningHours"
+                    value={formData.eveningHours}
+                    current={site.eveningHours}
+                    onChange={handleChange}
+                    placeholder="e.g., 5:00 PM – 8:00 PM"
+                  />
+                </div>
+                <Field
+                  label="Saturday hours"
+                  name="saturdayHours"
+                  value={formData.saturdayHours}
+                  current={site.saturdayHours}
+                  onChange={handleChange}
+                  placeholder="e.g., 9:00 AM – 1:00 PM"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Evening Hours
-              </label>
-              <input
-                type="text"
-                name="eveningHours"
-                value={formData.eveningHours}
-                onChange={handleChange}
-                placeholder={site.eveningHours || 'e.g., 5:00 PM - 8:00 PM'}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">Current: {site.eveningHours || 'Not provided'}</p>
-            </div>
-          </div>
 
-          {/* Saturday Hours */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Saturday Hours
-            </label>
-            <input
-              type="text"
-              name="saturdayHours"
-              value={formData.saturdayHours}
-              onChange={handleChange}
-              placeholder={site.saturdayHours || 'e.g., 9:00 AM - 1:00 PM'}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <p className="text-xs text-gray-500 mt-1">Current: {site.saturdayHours || 'Not provided'}</p>
-          </div>
-
-          {/* Contact Information */}
-          <div className="border-t border-gray-200 pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Contact Information</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Your Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
+            <div className="border-t border-slate-100 pt-4">
+              <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">Your contact</p>
+              <div className="space-y-3">
+                <Field
+                  label="Name"
                   name="contactName"
                   value={formData.contactName}
                   onChange={handleChange}
-                  required
                   placeholder="Your full name"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
                 />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field
+                    label="Email"
                     name="contactEmail"
+                    type="email"
                     value={formData.contactEmail}
                     onChange={handleChange}
+                    placeholder="you@schools.nyc.gov"
                     required
-                    placeholder="your.email@example.com"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
+                  <Field
+                    label="Phone"
                     name="contactPhone"
+                    type="tel"
                     value={formData.contactPhone}
                     onChange={handleChange}
-                    placeholder="(555) 123-4567"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Optional"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Additional Notes
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Notes
+                  </span>
+                  <textarea
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleChange}
+                    rows={2}
+                    placeholder="Anything else admins should know"
+                    className="select-field min-h-[72px] resize-y"
+                  />
                 </label>
-                <textarea
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleChange}
-                  rows={3}
-                  placeholder="Any additional information about these changes..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
               </div>
             </div>
           </div>
 
-          {/* Submit Buttons */}
-          <div className="flex items-center justify-end gap-4 pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
               disabled={isSubmitting}
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !formData.contactName || !formData.contactEmail}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg bg-d79-navy px-4 py-2 text-sm font-medium text-white hover:bg-d79-blue disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isSubmitting ? 'Submitting...' : 'Submit Change Request'}
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Submitting...' : 'Submit request'}
             </button>
           </div>
         </form>
@@ -307,4 +401,3 @@ export default function ChangeRequestModal({ site, isOpen, onClose }: ChangeRequ
     </div>
   );
 }
-

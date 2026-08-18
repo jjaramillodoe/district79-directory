@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Building2, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import PublicGoogleLoginButton from '@/components/auth/PublicGoogleLoginButton';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState<string>('');
   const [googleEnabled, setGoogleEnabled] = useState(false);
@@ -15,8 +14,7 @@ export default function LoginPage() {
   useEffect(() => {
     checkAuth();
     checkGoogleConfig();
-    
-    // Check for OAuth error in URL
+
     const urlParams = new URLSearchParams(window.location.search);
     const errorParam = urlParams.get('error');
     if (errorParam) {
@@ -29,7 +27,6 @@ export default function LoginPage() {
           ? 'Google authentication is not configured.'
           : 'Authentication error occurred.'
       );
-      // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
@@ -41,11 +38,9 @@ export default function LoginPage() {
         const data = await response.json();
         setGoogleEnabled(data.googleEnabled || false);
       } else {
-        console.error('❌ Config API failed with status:', response.status);
         setGoogleEnabled(false);
       }
-    } catch (error) {
-      console.error('❌ Error checking Google config:', error);
+    } catch {
       setGoogleEnabled(false);
     }
   };
@@ -56,63 +51,66 @@ export default function LoginPage() {
       if (response.ok) {
         const data = await response.json();
         if (data.authenticated) {
-          setIsAuthenticated(true);
-          // Redirect to /home if authenticated
           router.push('/home');
-        } else {
-          setIsAuthenticated(false);
+          return;
         }
-      } else {
-        setIsAuthenticated(false);
       }
     } catch (error) {
       console.error('Auth check error:', error);
-      setIsAuthenticated(false);
     } finally {
       setAuthLoading(false);
     }
   };
 
-  // Show loading state
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="flex min-h-[60vh] items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
+          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-d79-blue" />
+          <p className="text-slate-600">Loading...</p>
         </div>
       </div>
     );
   }
 
-  // Show login screen
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-2xl p-8">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
-            <Building2 className="h-8 w-8 text-white" />
+    <div className="relative overflow-hidden bg-slate-50">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(0,63,135,0.08),transparent_55%)]" />
+      <div className="page-shell relative flex min-h-[calc(100vh-160px)] items-center justify-center py-12">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-card">
+          <div className="mb-8 text-center">
+            <div className="mb-5 flex items-center justify-center gap-4">
+              <img src="/images/d79logo.png" alt="District 79" className="h-14 object-contain" />
+              <img src="/images/nycpublicshools.png" alt="NYC Public Schools" className="h-12 object-contain" />
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight text-d79-navy">
+              District 79 Directory
+            </h1>
+            <p className="mt-2 text-sm text-slate-600">
+              Sign in with your NYC DOE Google account to browse Adult Education and Youth Program sites.
+            </p>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">District 79 Directory</h2>
-          <p className="text-gray-600 mt-2">NYC Public Schools</p>
-          <p className="text-sm text-gray-500 mt-4">Sign in to access the directory</p>
+
+          {authError && (
+            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {authError}
+            </div>
+          )}
+
+          {googleEnabled ? (
+            <PublicGoogleLoginButton />
+          ) : (
+            <div className="rounded-lg bg-slate-50 px-4 py-5 text-center text-sm text-slate-600">
+              <p>Google authentication is not configured.</p>
+              <p className="mt-2">Please contact your administrator.</p>
+            </div>
+          )}
+
+          <p className="mt-6 text-center text-xs leading-5 text-slate-500">
+            Access is limited to District 79 staff with an{' '}
+            <span className="font-medium text-slate-700">@schools.nyc.gov</span> email address.
+          </p>
         </div>
-
-        {authError && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-            {authError}
-          </div>
-        )}
-
-        {googleEnabled ? (
-          <PublicGoogleLoginButton />
-        ) : (
-          <div className="text-center py-4">
-            <p className="text-gray-600">Google authentication is not configured.</p>
-            <p className="text-sm text-gray-500 mt-2">Please contact your administrator.</p>
-            <p className="text-sm text-gray-500 mt-2">Only District 79 Staff with @schools.nyc.gov email addresses can access the directory.</p>
-          </div>
-        )}
       </div>
     </div>
   );

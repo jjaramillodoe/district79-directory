@@ -5,7 +5,7 @@ export async function POST(request: Request) {
   try {
     const data = await request.json();
     
-    const { siteId, siteName, businessPhone, daytimeDays, daytimeHours, eveningDays, eveningHours, saturdayHours, contactName, contactEmail, contactPhone, notes } = data;
+    const { siteId, siteName, businessPhone, daytimeDays, daytimeHours, eveningDays, eveningHours, saturdayHours, siteSupervisor, siteSupervisorPhone, contactName, contactEmail, contactPhone, notes } = data;
 
     if (!siteId) {
       return NextResponse.json({ error: 'Site ID is required' }, { status: 400 });
@@ -24,6 +24,8 @@ export async function POST(request: Request) {
       eveningDays: eveningDays || null,
       eveningHours: eveningHours || null,
       saturdayHours: saturdayHours || null,
+      siteSupervisor: typeof siteSupervisor === 'string' ? siteSupervisor : null,
+      siteSupervisorPhone: typeof siteSupervisorPhone === 'string' ? siteSupervisorPhone : null,
       contactName: contactName || null,
       contactEmail: contactEmail || null,
       contactPhone: contactPhone || null,

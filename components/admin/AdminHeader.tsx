@@ -1,50 +1,57 @@
 'use client';
 
-import { ArrowLeft, AlertCircle, LogOut } from 'lucide-react';
-import Link from 'next/link';
+import { AlertCircle, LogOut } from 'lucide-react';
 
 interface AdminHeaderProps {
-  pendingRequestsCount: number;
-  onToggleChangeRequests: () => void;
+  title?: string;
+  subtitle?: string;
+  pendingRequestsCount?: number;
+  showChangeRequests?: boolean;
+  onToggleChangeRequests?: () => void;
   onLogout: () => void;
 }
 
-export default function AdminHeader({ pendingRequestsCount, onToggleChangeRequests, onLogout }: AdminHeaderProps) {
+export default function AdminHeader({
+  title = 'Admin',
+  subtitle = 'Manage District 79 sites, imports, and change requests',
+  pendingRequestsCount = 0,
+  showChangeRequests = false,
+  onToggleChangeRequests,
+  onLogout,
+}: AdminHeaderProps) {
   return (
-    <div className="flex items-center justify-between mb-6">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
-        <p className="text-gray-600 mt-1">Manage District 79 sites</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-d79-navy">{title}</h1>
+        <p className="mt-1 text-slate-600">{subtitle}</p>
       </div>
-      <div className="flex items-center gap-4">
-        <Link 
-          href="/" 
-          className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Directory
-        </Link>
-        <button
-          onClick={onToggleChangeRequests}
-          className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors flex items-center gap-2 relative"
-        >
-          <AlertCircle className="h-5 w-5" />
-          Change Requests
-          {pendingRequestsCount > 0 && (
-            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
-              {pendingRequestsCount}
-            </span>
-          )}
-        </button>
+      <div className="flex flex-wrap items-center gap-2">
+        {onToggleChangeRequests && (
+          <button
+            onClick={onToggleChangeRequests}
+            className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
+              showChangeRequests
+                ? 'bg-d79-navy text-white'
+                : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <AlertCircle className="h-4 w-4" />
+            Change requests
+            {pendingRequestsCount > 0 && (
+              <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-xs font-semibold text-white">
+                {pendingRequestsCount}
+              </span>
+            )}
+          </button>
+        )}
         <button
           onClick={onLogout}
-          className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors flex items-center gap-2"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           <LogOut className="h-4 w-4" />
-          Logout
+          Admin sign out
         </button>
       </div>
     </div>
   );
 }
-

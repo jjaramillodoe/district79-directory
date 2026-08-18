@@ -10,51 +10,45 @@ interface UploadSectionProps {
 
 export default function UploadSection({ onFileUpload, uploading, uploadStatus }: UploadSectionProps) {
   return (
-    <>
-      {/* Upload Section */}
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Upload CSV Files</h2>
-        
-        <div className="space-y-4">
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <p className="text-sm text-gray-600 mb-2">
-              Upload your CSV files to update the directory
-            </p>
-            <label className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed">
-              <Upload className="mr-2 h-5 w-5" />
-              Choose File
-              <input
-                type="file"
-                accept=".csv"
-                onChange={onFileUpload}
-                disabled={uploading}
-                className="hidden"
-              />
-            </label>
-          </div>
-
-          {uploadStatus && (
-            <div className={`p-4 rounded-lg ${
-              uploadStatus.startsWith('✅') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-            }`}>
-              {uploadStatus}
-            </div>
-          )}
+    <div className="surface-card p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">Quick CSV upload</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Replaces directory fields in the same category. Descriptions and map coordinates are kept for matching site names.
+          </p>
         </div>
+        <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-d79-navy px-4 py-2 text-sm font-medium text-white hover:bg-d79-blue">
+          {uploading ? 'Uploading...' : (
+            <>
+              <Upload className="h-4 w-4" />
+              Choose CSV
+            </>
+          )}
+          <input
+            type="file"
+            accept=".csv"
+            onChange={onFileUpload}
+            disabled={uploading}
+            className="hidden"
+          />
+        </label>
       </div>
 
-      {/* Instructions */}
-      <div className="bg-blue-50 rounded-lg p-6 mb-8">
-        <h3 className="font-semibold text-blue-900 mb-2">How to Upload CSV Files:</h3>
-        <ol className="list-decimal list-inside space-y-1 text-blue-800">
-          <li>Click "Choose File" and select your CSV file</li>
-          <li>Files will be automatically categorized as Adult Education or Youth Programs</li>
-          <li>Existing sites in the same category will be replaced</li>
-          <li>Wait for the success message before uploading another file</li>
-        </ol>
-      </div>
-    </>
+      {uploadStatus && (
+        <div
+          className={`mt-4 rounded-lg px-4 py-3 text-sm ${
+            uploadStatus.startsWith('✅') ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'
+          }`}
+        >
+          {uploadStatus}
+        </div>
+      )}
+
+      <p className="mt-3 flex items-start gap-2 text-xs text-slate-500">
+        <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        Adult Education and Youth Program files are categorized automatically.
+      </p>
+    </div>
   );
 }
-

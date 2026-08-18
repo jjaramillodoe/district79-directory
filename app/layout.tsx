@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 import Header from "@/components/Header";
+import ScrollToTop from "@/components/ScrollToTop";
 import { Analytics } from "@vercel/analytics/react";
 
 const currentYear = new Date().getFullYear();
@@ -48,28 +49,28 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased bg-gray-50">
-        <div className="flex flex-col min-h-screen">
+      <body className="bg-slate-50 antialiased">
+        <div className="flex min-h-screen flex-col">
           <Header />
           <Analytics />
-          {/* Main content */}
-          <main className="flex-1">
-            {children}
-          </main>
-          <footer className="bg-white border-t">
-            <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-sm text-gray-600">
+          <main className="flex-1">{children}</main>
+          <ScrollToTop />
+          <footer className="mt-auto border-t border-slate-200 bg-white">
+            <div className="page-shell flex flex-col gap-4 py-6 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-medium text-gray-800">NYC Public Schools - District 79</p>
-                <p className="text-gray-500">Internal use only. © {currentYear} All rights reserved.</p>
+                <p className="font-medium text-d79-navy">NYC Public Schools — District 79</p>
+                <p className="text-slate-500">Internal staff directory. © {currentYear} All rights reserved.</p>
               </div>
-              <div className="flex items-center gap-4">
-                <Link href="/privacy-policy" className="hover:text-blue-600">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <Link href="/privacy-policy" className="hover:text-d79-blue">
                   Privacy Policy
                 </Link>
-                <span className="text-gray-400">|</span>
-                <Link href="/terms-of-service" className="hover:text-blue-600">
+                <Link href="/terms-of-service" className="hover:text-d79-blue">
                   Terms of Service
                 </Link>
+                <a href="mailto:jjaramillo7@schools.nyc.gov" className="hover:text-d79-blue">
+                  Support
+                </a>
               </div>
             </div>
           </footer>

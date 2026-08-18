@@ -1,80 +1,74 @@
-import { User, UserRound, UserSquare } from 'lucide-react';
+interface HeroSectionProps {
+  siteCount?: number;
+  boroughCount?: number;
+  programCount?: number;
+}
 
 const executives = [
-  {
-    name: 'Glenda Esperance',
-    title: 'Superintendent',
-    image: <UserRound className="h-12 w-12 text-white" />,
-  },
-  {
-    name: 'Jerry Brito',
-    title: 'Deputy Superintendent',
-    image: <UserRound className="h-12 w-12 text-white" />,
-  },
-  {
-    name: 'Veronica Pichardo',
-    title: 'Executive Director',
-    image: <UserRound className="h-12 w-12 text-white" />,
-  },
-  {
-    name: 'Annette Knox',
-    title: 'Executive Director',
-    image: <UserSquare className="h-12 w-12 text-white" />,
-  },
-  {
-    name: 'Ben Meade',
-    title: 'Director of Student Services',
-    image: <UserSquare className="h-12 w-12 text-white" />,
-  },
-  {
-    name: 'Stacey Oliger',
-    title: 'Director of Communications',
-    image: <UserSquare className="h-12 w-12 text-white" />,
-  },
-  {
-    name: 'Randy Cole',
-    title: 'Director of Operations',
-    image: <UserSquare className="h-12 w-12 text-white" />,
-  }
+  { name: 'Glenda Esperance', title: 'Superintendent' },
+  { name: 'Jerry Brito', title: 'Deputy Superintendent' },
+  { name: 'Veronica Pichardo', title: 'Executive Director' },
+  { name: 'Annette Knox', title: 'Executive Director' },
+  { name: 'Ben Meade', title: 'Director of Student Services' },
+  { name: 'Stacey Oliger', title: 'Director of Communications' },
+  { name: 'Randy Cole', title: 'Director of Operations' },
 ];
 
-export default function HeroSection() {
+export default function HeroSection({
+  siteCount,
+  boroughCount,
+  programCount,
+}: HeroSectionProps) {
   return (
-    <section className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white shadow-xl relative overflow-hidden">
-      <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-      <div className="max-w-7xl mx-auto px-4 py-16 relative z-10">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-extrabold mb-4 tracking-tight">District 79 Directory</h1>
-          <p className="text-blue-100 text-xl mb-2">Alternative Education for All</p>
-          <div className="inline-block mt-4 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-sm">
-            Serving students across New York City
-          </div>
+    <section className="relative overflow-hidden bg-d79-navy text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,120,212,0.35),transparent_42%)]" />
+      <div className="page-shell relative z-10 py-10 sm:py-12">
+        <div className="max-w-3xl">
+          <p className="mb-3 inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-medium tracking-wide text-blue-100">
+            NYC Public Schools · Internal directory
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            Find District 79 sites across New York City
+          </h1>
+          <p className="mt-3 max-w-2xl text-base text-blue-100 sm:text-lg">
+            Search open Adult Education and Youth Program locations, contact staff, and export the current view.
+          </p>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 shadow-2xl">
-          <h2 className="text-2xl font-bold mb-6 text-center">Executive Leadership</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {(siteCount || boroughCount || programCount) && (
+          <dl className="mt-8 grid grid-cols-3 gap-3 max-w-xl">
+            <div className="rounded-xl bg-white/10 px-4 py-3">
+              <dt className="text-xs uppercase tracking-wide text-blue-200">Open sites</dt>
+              <dd className="mt-1 text-2xl font-semibold">{siteCount ?? 0}</dd>
+            </div>
+            <div className="rounded-xl bg-white/10 px-4 py-3">
+              <dt className="text-xs uppercase tracking-wide text-blue-200">Boroughs</dt>
+              <dd className="mt-1 text-2xl font-semibold">{boroughCount ?? 0}</dd>
+            </div>
+            <div className="rounded-xl bg-white/10 px-4 py-3">
+              <dt className="text-xs uppercase tracking-wide text-blue-200">Programs</dt>
+              <dd className="mt-1 text-2xl font-semibold">{programCount ?? 0}</dd>
+            </div>
+          </dl>
+        )}
+
+        <div className="mt-8 border-t border-white/15 pt-6">
+          <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-blue-200">
+            Executive leadership
+          </h2>
+          <div className="flex flex-wrap gap-2">
             {executives.map((executive) => (
-              <div className="bg-white/10 rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all transform hover:scale-105">
-                <div className="text-center">
-                  <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-full w-24 h-24 mx-auto mb-4 flex items-center justify-center shadow-lg">
-                    {executive.image}
-                  </div>
-                  <p className="font-bold text-lg mb-1">{executive.title}</p>
-                  <p className="text-blue-100 text-sm">{executive.name}</p>
-                </div>
+              <div
+                key={`${executive.title}-${executive.name}`}
+                className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5"
+              >
+                <p className="text-sm font-medium leading-tight">{executive.name}</p>
+                <p className="text-[11px] text-blue-200">{executive.title}</p>
               </div>
             ))}
           </div>
         </div>
       </div>
-      <div className="absolute bottom-0 w-full">
-        <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M0 0L60 10C120 20 240 40 360 53.3C480 67 600 73 720 70C840 67 960 53 1080 48C1200 43 1320 47 1380 49.3L1440 51.3V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0V0Z" fill="white"/>
-        </svg>
-      </div>
     </section>
   );
 }
-
-

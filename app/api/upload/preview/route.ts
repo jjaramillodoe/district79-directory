@@ -51,6 +51,8 @@ export async function POST(request: Request) {
       apEmail: trimValue(record['AP Email']),
       principal: trimValue(record.Principal),
       principalEmail: trimValue(record['Principal Email']),
+      siteSupervisor: trimValue(record['Site Supervisor'] || record['Site Supervisors'] || record.Supervisor),
+      siteSupervisorPhone: trimValue(record['Site Supervisor Phone'] || record['Site Supervisors Phone'] || record['Supervisor Phone']),
       newForSY: trimValue(record['New for SY 25-26']),
       daytimeDays: trimValue(record['Daytime Days of Operation'] || record['Days of Operation']),
       daytimeHours: trimValue(record['Daytime Hours of Operation'] || (record['Start Time'] ? `${record['Start Time']} - ${record['End Time']}` : '')),
@@ -85,6 +87,7 @@ export async function POST(request: Request) {
     const fieldsToCompare = [
       'dbn', 'program', 'status', 'buildingAddress', 'borough', 'zipCode',
       'businessPhone', 'assistantPrincipal', 'apEmail', 'principal', 'principalEmail',
+      'siteSupervisor', 'siteSupervisorPhone',
       'daytimeDays', 'daytimeHours', 'eveningDays', 'eveningHours',
       'saturdayHours', 'subject', 'hostSchool', 'hsePrepCode', 'lcgmsBuildingCode',
       'buildingCode', 'sedCode', 'buildingOwnership', 'policePrecinct', 'csd',

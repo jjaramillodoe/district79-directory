@@ -9,7 +9,7 @@ export default function CopyEmailsButton({ copied, onClick }: Props) {
   return (
     <button
       onClick={onClick}
-      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors relative"
+      className="inline-flex items-center gap-2 rounded-lg bg-d79-navy px-3 py-2 text-sm font-medium text-white hover:bg-d79-blue"
       title="Copy principal and assistant principal emails from filtered results"
     >
       {copied ? (

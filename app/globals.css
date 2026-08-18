@@ -5,3 +5,30 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply text-slate-800 antialiased;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-d79-blue ring-offset-2;
+  }
+}
+
+@layer components {
+  .page-shell {
+    @apply max-w-7xl mx-auto px-4 sm:px-6;
+  }
+
+  .surface-card {
+    @apply bg-white rounded-2xl border border-slate-200/80 shadow-card;
+  }
+
+  .select-field {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 shadow-sm focus:border-d79-blue focus:outline-none focus:ring-2 focus:ring-d79-blue/20;
+  }
+}
