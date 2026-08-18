@@ -75,14 +75,26 @@ export async function POST(request: Request) {
     let successCount = 0;
 
     for (const site of targets) {
-      const description = buildTemplateDescription(site);
+      const facts = {
+        siteName: String(site.siteName || ''),
+        program: String(site.program || ''),
+        buildingAddress: String(site.buildingAddress || ''),
+        borough: String(site.borough || ''),
+        category: String(site.category || ''),
+        daytimeDays: String(site.daytimeDays || ''),
+        daytimeHours: String(site.daytimeHours || ''),
+        eveningDays: String(site.eveningDays || ''),
+        eveningHours: String(site.eveningHours || ''),
+        saturdayHours: String(site.saturdayHours || ''),
+      };
+      const description = buildTemplateDescription(facts);
       await db.collection('sites').updateOne(
         { _id: site._id },
         {
           $set: {
             description,
             descriptionSource: 'template',
-            descriptionFactsKey: descriptionFactsKey(site),
+            descriptionFactsKey: descriptionFactsKey(facts),
           },
         }
       );

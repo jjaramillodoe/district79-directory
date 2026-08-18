@@ -24,12 +24,20 @@ export async function POST(request: Request) {
     let skippedNoAp = 0;
 
     for (const site of sites) {
-      const filled = supervisorsFromAssistantPrincipals(site.assistantPrincipal, site.businessPhone);
+      const assistantPrincipal = typeof site.assistantPrincipal === 'string' ? site.assistantPrincipal : '';
+      const businessPhone = typeof site.businessPhone === 'string' ? site.businessPhone : '';
+      const filled = supervisorsFromAssistantPrincipals(assistantPrincipal, businessPhone);
       if (!filled) {
         skippedNoAp++;
         continue;
       }
-      if (!overwrite && hasSupervisor(site)) {
+      if (
+        !overwrite &&
+        hasSupervisor({
+          siteSupervisor: typeof site.siteSupervisor === 'string' ? site.siteSupervisor : '',
+          siteSupervisorPhone: typeof site.siteSupervisorPhone === 'string' ? site.siteSupervisorPhone : '',
+        })
+      ) {
         skippedHasSupervisor++;
         continue;
       }

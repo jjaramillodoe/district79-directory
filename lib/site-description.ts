@@ -116,7 +116,7 @@ export function reconcileDescription(
     };
   }
 
-  if (source === 'template' && existing.descriptionFactsKey !== key) {
+  if (source === 'template' && existing?.descriptionFactsKey !== key) {
     return {
       description: buildTemplateDescription(next),
       descriptionSource: 'template',
