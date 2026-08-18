@@ -1,278 +1,276 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import Footer from '@/components/Footer';
 import SiteMap, { Site } from '@/components/SiteMap';
-import { Loader2, ChevronLeft, AlertCircle } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Loader2, AlertCircle, MapPin, Search, X } from 'lucide-react';
 import Link from 'next/link';
+import { isValidLatLng } from '@/lib/coordinates';
 
 export default function MapPage() {
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedProgram, setSelectedProgram] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedBorough, setSelectedBorough] = useState('all');
   const [selectedSite, setSelectedSite] = useState<string | undefined>();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // Check authentication
   useEffect(() => {
     checkAuth();
   }, []);
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('/api/auth/public/verify', {
-        credentials: 'include', // Important: include cookies
-      });
-      
+      const response = await fetch('/api/auth/public/verify', { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
-        
         if (data.authenticated) {
           setIsAuthenticated(true);
-          fetchData(); // Fetch data only if authenticated
+          fetchData();
         } else {
           window.location.href = '/';
         }
       } else {
         window.location.href = '/';
       }
-    } catch (error) {
-      console.error('Auth check error:', error);
+    } catch (err) {
+      console.error('Auth check error:', err);
       window.location.href = '/';
     } finally {
       setAuthLoading(false);
     }
   };
 
-  // Fetch both token and sites in parallel
   const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        const [tokenResponse, sitesResponse] = await Promise.all([
-          fetch('/api/mapbox-token'),
-          fetch('/api/sites'),
-        ]);
+    try {
+      setLoading(true);
+      const [tokenResponse, sitesResponse] = await Promise.all([
+        fetch('/api/mapbox-token'),
+        fetch('/api/sites'),
+      ]);
 
-        // Handle token
-        if (!tokenResponse.ok) {
-          throw new Error('Failed to fetch Mapbox token');
-        }
-        const tokenData = await tokenResponse.json();
-        if (tokenData.token) {
-          setMapboxToken(tokenData.token);
-        } else {
-          throw new Error('Token not found in response');
-        }
+      if (!tokenResponse.ok) throw new Error('Failed to fetch Mapbox token');
+      const tokenData = await tokenResponse.json();
+      if (!tokenData.token) throw new Error('Token not found in response');
+      setMapboxToken(tokenData.token);
 
-        // Handle sites
-        if (!sitesResponse.ok) {
-          throw new Error('Failed to fetch sites');
-        }
-        const sitesData = await sitesResponse.json();
-        // Filter to show only open sites
-        const openSites = (sitesData || []).filter((site: Site) => 
-          site.status === 'Open'
-        );
-        setSites(openSites);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load map data. Please check your configuration.');
-      } finally {
-        setLoading(false);
-      }
+      if (!sitesResponse.ok) throw new Error('Failed to fetch sites');
+      const sitesData = await sitesResponse.json();
+      setSites((sitesData || []).filter((site: Site) => site.status === 'Open'));
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Failed to load map data. Please check your configuration.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Filter sites with valid coordinates
   const sitesWithCoordinates = useMemo(
-    () =>
-      sites.filter(
-        (site) =>
-          site.latitude != null &&
-          site.longitude != null &&
-          !isNaN(site.latitude) &&
-          !isNaN(site.longitude) &&
-          isFinite(site.latitude) &&
-          isFinite(site.longitude)
-      ),
+    () => sites.filter((site) => isValidLatLng(site.latitude, site.longitude)),
     [sites]
   );
 
-  // Get unique programs for filter
   const programs = useMemo(
-    () =>
-      Array.from(
-        new Set(sitesWithCoordinates.map((s) => s.program).filter(Boolean))
-      ).sort(),
+    () => Array.from(new Set(sitesWithCoordinates.map((s) => s.program).filter(Boolean))).sort(),
     [sitesWithCoordinates]
   );
 
-  // Filter sites by program and category
-  const filteredSites = useMemo(
-    () =>
-      sitesWithCoordinates.filter((site) => {
-        const matchesProgram =
-          selectedProgram === 'all' || site.program === selectedProgram;
-        const matchesCategory =
-          selectedCategory === 'all' || site.category === selectedCategory;
-        return matchesProgram && matchesCategory;
-      }),
-    [sitesWithCoordinates, selectedProgram, selectedCategory]
+  const boroughs = useMemo(
+    () => Array.from(new Set(sitesWithCoordinates.map((s) => s.borough).filter(Boolean))).sort() as string[],
+    [sitesWithCoordinates]
   );
 
-  // Loading state
-  if (authLoading || !isAuthenticated) {
+  const filteredSites = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return sitesWithCoordinates.filter((site) => {
+      const matchesProgram = selectedProgram === 'all' || site.program === selectedProgram;
+      const matchesCategory = selectedCategory === 'all' || site.category === selectedCategory;
+      const matchesBorough = selectedBorough === 'all' || site.borough === selectedBorough;
+      const matchesSearch =
+        !q ||
+        site.siteName.toLowerCase().includes(q) ||
+        site.program.toLowerCase().includes(q) ||
+        site.buildingAddress?.toLowerCase().includes(q) ||
+        site.borough?.toLowerCase().includes(q);
+      return matchesProgram && matchesCategory && matchesBorough && matchesSearch;
+    });
+  }, [sitesWithCoordinates, selectedProgram, selectedCategory, selectedBorough, searchTerm]);
+
+  const hasActiveFilters =
+    searchTerm !== '' ||
+    selectedProgram !== 'all' ||
+    selectedCategory !== 'all' ||
+    selectedBorough !== 'all';
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setSelectedProgram('all');
+    setSelectedCategory('all');
+    setSelectedBorough('all');
+    setSelectedSite(undefined);
+  };
+
+  const unmappedCount = sites.length - sitesWithCoordinates.length;
+
+  if (authLoading || !isAuthenticated || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex min-h-[50vh] items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
+          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-d79-blue" />
+          <p className="text-slate-600">Loading map...</p>
         </div>
       </div>
     );
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Loading Map
-          </h2>
-          <p className="text-gray-600">Loading map data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Error state
   if (error || !mapboxToken) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-red-900 mb-2">
-              Map Error
-            </h2>
-            <p className="text-red-700 mb-4">
-              {error ||
-                'Mapbox access token is missing. Please check your environment variables.'}
-            </p>
-            <Link
-              href="/"
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              Back to Directory
-            </Link>
-          </div>
+      <div className="page-shell flex min-h-[50vh] items-center justify-center py-12">
+        <div className="max-w-md rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+          <AlertCircle className="mx-auto mb-4 h-10 w-10 text-red-500" />
+          <h2 className="text-lg font-semibold text-red-900">Map unavailable</h2>
+          <p className="mt-2 text-sm text-red-700">
+            {error || 'Mapbox access token is missing. Please check your environment variables.'}
+          </p>
+          <Link
+            href="/home"
+            className="mt-4 inline-flex items-center rounded-lg bg-d79-navy px-4 py-2 text-sm font-medium text-white hover:bg-d79-blue"
+          >
+            Back to directory
+          </Link>
         </div>
-        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Site Map</h1>
-              <p className="text-gray-600 mt-1">
-                View all District 79 sites on a map
-              </p>
-            </div>
-            <Link
-              href="/"
-              className="text-blue-600 hover:text-blue-800 flex items-center gap-2 transition-colors"
-            >
-              <ChevronLeft className="h-5 w-5" />
-              Back to Directory
-            </Link>
-          </div>
-
-          {/* Filters */}
-          <div className="bg-white rounded-lg shadow p-4 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Program
-                </label>
-                <select
-                  value={selectedProgram}
-                  onChange={(e) => setSelectedProgram(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Programs</option>
-                  {programs.map((program) => (
-                    <option key={program} value={program}>
-                      {program}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Category
-                </label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Categories</option>
-                  <option value="adult-ed">Adult Education</option>
-                  <option value="youth">Youth Programs</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="mt-4 text-sm text-gray-600">
-              Showing {filteredSites.length} of {sitesWithCoordinates.length} sites
-              {sites.length !== sitesWithCoordinates.length && (
-                <span className="text-gray-500">
-                  {' '}
-                  ({sites.length - sitesWithCoordinates.length} without coordinates)
-                </span>
+    <div className="bg-slate-50">
+      <div className="page-shell space-y-4 py-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-d79-navy">Site map</h1>
+            <p className="mt-1 text-slate-600">
+              {filteredSites.length} mapped sites
+              {unmappedCount > 0 && (
+                <span className="text-slate-500"> · {unmappedCount} without coordinates</span>
               )}
-            </div>
+            </p>
+          </div>
+          <div className="flex items-center gap-4 text-xs text-slate-600">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-d79-navy" />
+              Adult Education
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-violet-600" />
+              Youth Programs
+            </span>
           </div>
         </div>
 
-        {/* Map Container */}
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden" style={{ height: '600px' }}>
-          {mapboxToken && (
+        <div className="surface-card p-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <div className="relative md:col-span-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search sites..."
+                className="select-field pl-9"
+              />
+            </div>
+            <select
+              value={selectedBorough}
+              onChange={(e) => setSelectedBorough(e.target.value)}
+              className="select-field"
+            >
+              <option value="all">All boroughs</option>
+              {boroughs.map((borough) => (
+                <option key={borough} value={borough}>{borough}</option>
+              ))}
+            </select>
+            <select
+              value={selectedProgram}
+              onChange={(e) => setSelectedProgram(e.target.value)}
+              className="select-field"
+            >
+              <option value="all">All programs</option>
+              {programs.map((program) => (
+                <option key={program} value={program}>{program}</option>
+              ))}
+            </select>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="select-field"
+            >
+              <option value="all">All categories</option>
+              <option value="adult-ed">Adult Education</option>
+              <option value="youth">Youth Programs</option>
+            </select>
+          </div>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-d79-navy"
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear filters
+            </button>
+          )}
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
+          <aside className="surface-card flex max-h-[70vh] flex-col overflow-hidden">
+            <div className="border-b border-slate-100 px-4 py-3 text-sm font-medium text-slate-700">
+              {filteredSites.length} {filteredSites.length === 1 ? 'site' : 'sites'}
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {filteredSites.length === 0 ? (
+                <div className="px-4 py-10 text-center text-sm text-slate-500">
+                  <MapPin className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+                  No mapped sites match these filters.
+                </div>
+              ) : (
+                filteredSites
+                  .slice()
+                  .sort((a, b) => a.siteName.localeCompare(b.siteName))
+                  .map((site) => (
+                    <button
+                      key={site._id}
+                      type="button"
+                      onClick={() => setSelectedSite(site._id)}
+                      className={`w-full border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50 ${
+                        selectedSite === site._id ? 'bg-d79-sky' : ''
+                      }`}
+                    >
+                      <p className="text-sm font-medium text-slate-900">{site.siteName}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">{site.program}</p>
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        {[site.borough, site.buildingAddress].filter(Boolean).join(' · ')}
+                      </p>
+                    </button>
+                  ))
+              )}
+            </div>
+          </aside>
+
+          <div className="h-[70vh] min-h-[480px] overflow-hidden rounded-2xl border border-slate-200 shadow-card">
             <SiteMap
               sites={filteredSites}
               selectedSite={selectedSite}
               onSiteSelect={setSelectedSite}
               mapboxToken={mapboxToken}
             />
-          )}
-        </div>
-
-        {/* Info Box */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="font-semibold text-blue-900 mb-2">About the Map</h3>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>• Click on markers to view site details</li>
-            <li>• Filter by program or category to narrow down results</li>
-            <li>• Only sites with geocoded coordinates are displayed</li>
-          </ul>
+          </div>
         </div>
       </div>
-
-      <Footer />
     </div>
   );
 }

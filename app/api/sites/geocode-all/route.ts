@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import mongodb from '@/lib/mongodb';
 import { geocodeAddress } from '@/lib/geocode';
+import { isValidLatLng } from '@/lib/coordinates';
 
 /**
- * API endpoint to geocode all sites that don't have coordinates
- * Can be called manually from admin panel to geocode all addresses
+ * Geocode sites that are missing coordinates, or all sites when regeocodeAll is true.
  */
 export async function POST(request: Request) {
   try {
@@ -13,26 +13,17 @@ export async function POST(request: Request) {
 
     const client = await mongodb;
     const db = client.db('district79');
-    
-    // Find sites to geocode - either without coordinates or all if regeocodeAll is true
-    const queryFilter: any = {
-      buildingAddress: { $exists: true, $ne: '' },
-    };
 
-    if (!regeocodeAll) {
-      // Only geocode sites without coordinates
-      queryFilter.$or = [
-        { latitude: { $exists: false } },
-        { latitude: null },
-        { longitude: { $exists: false } },
-        { longitude: null },
-      ];
-    }
-
-    const sitesToGeocode = await db
+    const candidates = await db
       .collection('sites')
-      .find(queryFilter)
+      .find({
+        buildingAddress: { $exists: true, $ne: '' },
+      })
       .toArray();
+
+    const sitesToGeocode = regeocodeAll
+      ? candidates
+      : candidates.filter((site) => !isValidLatLng(site.latitude, site.longitude));
 
     if (sitesToGeocode.length === 0) {
       return NextResponse.json({
@@ -47,10 +38,7 @@ export async function POST(request: Request) {
     let failed = 0;
     const errors: string[] = [];
 
-    // Geocode each site (with rate limiting)
-    for (let i = 0; i < sitesToGeocode.length; i++) {
-      const site = sitesToGeocode[i];
-      
+    for (const site of sitesToGeocode) {
       try {
         const result = await geocodeAddress(
           site.buildingAddress,
@@ -58,7 +46,7 @@ export async function POST(request: Request) {
           site.zipCode
         );
 
-        if (result.latitude && result.longitude) {
+        if (isValidLatLng(result.latitude, result.longitude)) {
           await db.collection('sites').updateOne(
             { _id: site._id },
             {
@@ -73,11 +61,6 @@ export async function POST(request: Request) {
           failed++;
           errors.push(`${site.siteName}: ${result.error || 'No coordinates found'}`);
         }
-
-        // Rate limiting: wait 1 second between requests (already handled in geocodeAddress, but extra safety)
-        if (i < sitesToGeocode.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1100));
-        }
       } catch (error) {
         failed++;
         errors.push(`${site.siteName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -89,7 +72,7 @@ export async function POST(request: Request) {
       message: `Geocoded ${geocoded} sites, ${failed} failed`,
       geocoded,
       failed,
-      errors: errors.slice(0, 10), // Return first 10 errors
+      errors: errors.slice(0, 10),
     });
   } catch (error) {
     console.error('Batch geocoding error:', error);
@@ -99,4 +82,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { Lock, Building2 } from 'lucide-react';
+import { Loader2, Lock } from 'lucide-react';
+import Link from 'next/link';
 
 interface LoginFormProps {
   onLogin: (password: string) => Promise<void>;
@@ -10,10 +11,15 @@ interface LoginFormProps {
   setPassword?: (password: string) => void;
 }
 
-export default function LoginForm({ onLogin, error, password: externalPassword, setPassword: externalSetPassword }: LoginFormProps) {
+export default function LoginForm({
+  onLogin,
+  error,
+  password: externalPassword,
+  setPassword: externalSetPassword,
+}: LoginFormProps) {
   const [password, setPasswordInternal] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const currentPassword = externalPassword !== undefined ? externalPassword : password;
   const setPassword = externalSetPassword || setPasswordInternal;
 
@@ -25,66 +31,69 @@ export default function LoginForm({ onLogin, error, password: externalPassword, 
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-2xl p-8">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
-            <Building2 className="h-8 w-8 text-white" />
+    <div className="relative overflow-hidden bg-slate-50">
+      <div className="page-shell relative flex min-h-[calc(100vh-160px)] items-center justify-center py-12">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-card">
+          <div className="mb-8 text-center">
+            <div className="mb-5 flex items-center justify-center gap-4">
+              <img src="/images/d79logo.png" alt="District 79" className="h-14 object-contain" />
+              <img src="/images/nycpublicshools.png" alt="NYC Public Schools" className="h-12 object-contain" />
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight text-d79-navy">Admin access</h1>
+            <p className="mt-2 text-sm text-slate-600">
+              Enter the admin password to manage sites, imports, and change requests.
+            </p>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">District 79 Directory</h2>
-          <p className="text-gray-600 mt-2">NYC Department of Education</p>
-          <p className="text-sm text-gray-500 mt-4">Admin Access</p>
-        </div>
 
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Admin Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              value={currentPassword}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter your password"
-              required
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-slate-700">
+                Admin password
+              </label>
+              <input
+                type="password"
+                id="password"
+                value={currentPassword}
+                onChange={(e) => setPassword(e.target.value)}
+                className="select-field"
+                placeholder="Enter password"
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            <button
+              type="submit"
               disabled={isLoading}
-            />
-          </div>
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-d79-navy px-4 py-2.5 text-sm font-medium text-white hover:bg-d79-blue disabled:cursor-not-allowed disabled:bg-slate-400"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                <>
+                  <Lock className="h-4 w-4" />
+                  Sign in
+                </>
+              )}
+            </button>
+          </form>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                Logging in...
-              </>
-            ) : (
-              <>
-                <Lock className="h-4 w-4" />
-                Login
-              </>
-            )}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <a href="/" className="text-sm text-gray-500 hover:text-blue-600">
-            ← Back to Directory
-          </a>
+          <p className="mt-6 text-center text-sm text-slate-500">
+            <Link href="/home" className="hover:text-d79-blue">
+              Back to directory
+            </Link>
+          </p>
         </div>
       </div>
     </div>
   );
 }
-

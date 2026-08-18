@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Upload, MapPin, Loader2 } from 'lucide-react';
-import Footer from '@/components/Footer';
 import AdminHeader from '@/components/admin/AdminHeader';
 import LoginForm from '@/components/admin/LoginForm';
 import UploadSection from '@/components/admin/UploadSection';
 import SearchAndFilters from '@/components/admin/SearchAndFilters';
 import SitesTable from '@/components/admin/SitesTable';
 import ChangeRequestsSection from '@/components/admin/ChangeRequestsSection';
+import { isValidLatLng } from '@/lib/coordinates';
+import { downloadDirectoryPdf } from '@/lib/pdf-export';
 
 interface Site {
   _id: string;
@@ -28,6 +29,8 @@ interface Site {
   apEmail?: string;
   principal?: string;
   principalEmail?: string;
+  siteSupervisor?: string;
+  siteSupervisorPhone?: string;
   daytimeDays?: string;
   daytimeHours?: string;
   eveningDays?: string;
@@ -57,6 +60,7 @@ export default function AdminPage() {
   const [authError, setAuthError] = useState('');
   const [geocodingAll, setGeocodingAll] = useState(false);
   const [generatingDescriptions, setGeneratingDescriptions] = useState(false);
+  const [fillingSupervisors, setFillingSupervisors] = useState(false);
   const [descriptionCount, setDescriptionCount] = useState(10);
   const [selectedSites, setSelectedSites] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
@@ -296,22 +300,23 @@ export default function AdminPage() {
   };
 
   const handleGeocodeAll = async () => {
-    const sitesWithoutCoords = sites.filter(s => !s.latitude || !s.longitude).length;
-    const totalSites = sites.length;
-    
+    const sitesWithoutCoords = sites.filter((s) => !isValidLatLng(s.latitude, s.longitude)).length;
+
     if (sitesWithoutCoords === 0) {
       const shouldRegeocode = confirm(
-        'All sites already have coordinates.\n\nWould you like to re-geocode all sites to update coordinates?\n\nThis will take several minutes due to rate limiting (1 per second).'
+        'All sites already have coordinates.\n\nRe-geocode every site with NYC GeoSearch / Mapbox?'
       );
       if (!shouldRegeocode) return;
-    } else {
-      if (!confirm(`This will geocode ${sitesWithoutCoords} site(s) without coordinates.\n\nThis may take several minutes due to rate limiting (1 per second).\n\nContinue?`)) {
-        return;
-      }
+    } else if (
+      !confirm(
+        `This will geocode ${sitesWithoutCoords} site(s) that are missing valid coordinates.\n\nContinue?`
+      )
+    ) {
+      return;
     }
 
     setGeocodingAll(true);
-    setUploadStatus('Geocoding sites... This may take a few minutes.');
+    setUploadStatus('Geocoding sites...');
 
     try {
       const response = await fetch('/api/sites/geocode-all', {
@@ -349,17 +354,17 @@ export default function AdminPage() {
     const count = selectedSiteIds.length > 0 ? selectedSiteIds.length : descriptionCount;
     
     if (selectedSiteIds.length > 0) {
-      if (!confirm(`This will generate descriptions for ${selectedSiteIds.length} selected site(s).\n\nThis may take several minutes due to API rate limiting.\n\nContinue?`)) {
+      if (!confirm(`Fill free template descriptions for ${selectedSiteIds.length} selected site(s)? Existing text is not replaced.`)) {
         return;
       }
     } else {
-      if (!confirm(`This will generate descriptions for ${descriptionCount} site(s) that don't have descriptions yet.\n\nThis may take several minutes due to API rate limiting.\n\nContinue?`)) {
+      if (!confirm(`Fill free template descriptions for ${descriptionCount} site(s) that don't have descriptions yet?`)) {
         return;
       }
     }
 
     setGeneratingDescriptions(true);
-    setUploadStatus(`Generating ${count} descriptions... This may take a few minutes.`);
+    setUploadStatus(`Filling ${count} descriptions...`);
 
     try {
       const response = await fetch('/api/generate-descriptions-bulk', {
@@ -394,6 +399,42 @@ export default function AdminPage() {
       setUploadStatus('❌ Failed to generate descriptions. Please try again.');
     } finally {
       setGeneratingDescriptions(false);
+    }
+  };
+
+  const handleFillSupervisors = async () => {
+    if (
+      !confirm(
+        'Copy assistant principal names to Site Supervisor for sites that do not already have one?\n\nEach supervisor will use that site\'s business phone. Existing supervisors will not be changed.'
+      )
+    ) {
+      return;
+    }
+
+    setFillingSupervisors(true);
+    setUploadStatus('Filling site supervisors...');
+
+    try {
+      const response = await fetch('/api/sites/fill-supervisors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ overwrite: false }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setUploadStatus(
+          `✅ Filled supervisors on ${data.updated} site(s). Skipped ${data.skippedHasSupervisor} that already had one.`
+        );
+        fetchSites();
+        setTimeout(() => setUploadStatus(''), 8000);
+      } else {
+        setUploadStatus(`❌ Error: ${data.error || 'Failed to fill supervisors'}`);
+      }
+    } catch (error) {
+      console.error('Fill supervisors error:', error);
+      setUploadStatus('❌ Failed to fill supervisors. Please try again.');
+    } finally {
+      setFillingSupervisors(false);
     }
   };
 
@@ -461,215 +502,19 @@ export default function AdminPage() {
   };
 
   const handleExportPdf = async () => {
-    const { jsPDF } = require('jspdf');
-    require('jspdf-autotable');
-    
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    let startY = 15;
-    
-    // Add logos and title on first page
     try {
-      // Get page width once
-      const pageWidth = doc.internal.pageSize.getWidth();
-      
-      // Fetch and add logos from public folder
-      const [d79Logo, nycLogo] = await Promise.all([
-        fetch('/images/d79logo.png').then(r => r.blob()).then(blob => URL.createObjectURL(blob)),
-        fetch('/images/nycpublicshools.png').then(r => r.blob()).then(blob => URL.createObjectURL(blob))
-      ]);
-      
-      // Add District 79 logo on the left
-      doc.addImage(d79Logo, 'PNG', 20, startY, 40, 20);
-      
-      // Add NYC Public Schools logo on the right
-      doc.addImage(nycLogo, 'PNG', pageWidth - 60, startY, 40, 20);
-      
-      startY += 25;
-      
-      // Executive Team Section - Centered and Enhanced
-      doc.setFontSize(13);
-      doc.setTextColor(37, 99, 235);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Executive Team', pageWidth / 2, startY, { align: 'center' });
-      doc.setFont('helvetica', 'normal');
-      startY += 10;
-      
-      // Center the team members
-      doc.setFontSize(10);
-      doc.setTextColor(0, 0, 0);
-      const teamMembers = [
-        { title: 'Superintendent', name: 'Glenda Esperance' },
-        { title: 'Deputy Superintendent', name: 'Jerry Brito' },
-        { title: 'Executive Director', name: 'Veronica Pichardo' },
-        { title: 'Executive Director', name: 'Annette Knox' },
-        { title: 'Director of Student Services', name: 'Ben Meade' }
-      ];
-      
-      teamMembers.forEach((member) => {
-        const fullText = `${member.title}: ${member.name}`;
-        doc.text(fullText, pageWidth / 2, startY, { align: 'center' });
-        startY += 7;
+      await downloadDirectoryPdf({
+        sites: filteredSites,
+        groupBy: 'program',
+        selectedBorough,
+        selectedProgram,
+        selectedCategory,
+        searchTerm,
       });
-      
-      startY += 12;
-      
-      // Divider line - centered and wider
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.5);
-      doc.line(30, startY, pageWidth - 30, startY);
-      startY += 12;
-      
     } catch (error) {
-      console.error('Error adding header:', error);
+      console.error('PDF export failed:', error);
+      alert('Could not export PDF. Please try again.');
     }
-    
-    // Group sites by program
-    const groupedByProgram: Record<string, Site[]> = {};
-    filteredSites.forEach(site => {
-      if (!groupedByProgram[site.program]) {
-        groupedByProgram[site.program] = [];
-      }
-      groupedByProgram[site.program].push(site);
-    });
-    
-    // Sort program names alphabetically
-    const sortedPrograms = Object.keys(groupedByProgram).sort();
-    
-    // Define table headers
-    const headers = ['DBN', 'LCGMS', 'Site Name', 'Address', 'Hours', 'Assistant Principal'];
-    
-    // Process each program group
-    sortedPrograms.forEach((program, programIndex) => {
-      const programSites = groupedByProgram[program];
-      const firstSite = programSites[0];
-      
-      // Add new page if needed (check if we have enough space)
-      if (startY > 180) {
-        doc.addPage();
-        startY = 15;
-      }
-      
-      // Program Title - Centered and styled
-      const pageWidth = doc.internal.pageSize.getWidth();
-      doc.setFontSize(16);
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      // Draw background rectangle for program title
-      const titleHeight = 8;
-      doc.setFillColor(37, 99, 235);
-      doc.rect(20, startY - 5, pageWidth - 40, titleHeight, 'F');
-      doc.text(program, pageWidth / 2, startY, { align: 'center' });
-      doc.setFont('helvetica', 'normal');
-      startY += 8;
-      
-      // Principal and Email - Centered
-      if (firstSite.principal || firstSite.principalEmail) {
-        doc.setFontSize(11);
-        doc.setTextColor(0, 0, 0);
-        const principalInfo = `Principal: ${firstSite.principal || 'N/A'}`;
-        doc.setFont('helvetica', 'bold');
-        doc.text(principalInfo, pageWidth / 2, startY, { align: 'center' });
-        doc.setFont('helvetica', 'normal');
-        startY += 6;
-        
-        if (firstSite.principalEmail) {
-          doc.setFontSize(10);
-          doc.setTextColor(70, 130, 180);
-          doc.text(`Email: ${firstSite.principalEmail}`, pageWidth / 2, startY, { align: 'center' });
-          startY += 6;
-        }
-      }
-      
-      // Main Address - Centered
-      if (firstSite.buildingAddress && firstSite.borough) {
-        doc.setFontSize(9);
-        doc.setTextColor(100, 100, 100);
-        const addressText = `Main Address: ${firstSite.buildingAddress}, ${firstSite.borough} ${firstSite.zipCode || ''}`;
-        doc.text(addressText, pageWidth / 2, startY, { align: 'center' });
-        startY += 6;
-      }
-      
-      startY += 4;
-      
-      // Create rows for this program
-      const rows = programSites.map(site => {
-        // Format hours - only show valid hours
-        const hours = [];
-        if (site.daytimeHours && site.daytimeHours !== 'N/A' && !site.daytimeHours.includes('undefined')) {
-          hours.push(`Day: ${site.daytimeHours}`);
-        }
-        if (site.eveningHours && site.eveningHours !== 'N/A' && !site.eveningHours.includes('undefined')) {
-          hours.push(`Eve: ${site.eveningHours}`);
-        }
-        if (site.saturdayHours && site.saturdayHours !== 'N/A' && !site.saturdayHours.includes('undefined')) {
-          hours.push(`Sat: ${site.saturdayHours}`);
-        }
-        const hoursStr = hours.length > 0 ? hours.join(', ') : '';
-        
-        // Format assistant principal - handle multiple separated by /
-        // Parse names and emails separately, then pair them
-        let apDisplay = '';
-        if (site.assistantPrincipal || site.apEmail) {
-          const names = site.assistantPrincipal 
-            ? site.assistantPrincipal.split('/').map(n => n.trim()).filter(Boolean)
-            : [];
-          const emails = site.apEmail
-            ? site.apEmail.split('/').map(e => e.trim()).filter(Boolean)
-            : [];
-          
-          if (names.length > 0 || emails.length > 0) {
-            const maxLength = Math.max(names.length, emails.length);
-            const apEntries = [];
-            
-            for (let i = 0; i < maxLength; i++) {
-              const name = names[i] || '';
-              const email = emails[i] || '';
-              
-              if (name && email) {
-                apEntries.push(`${name}\n${email}`);
-              } else if (name) {
-                apEntries.push(name);
-              } else if (email) {
-                apEntries.push(email);
-              }
-            }
-            
-            apDisplay = apEntries.join('\n\n');
-          } else {
-            apDisplay = 'N/A';
-          }
-        } else {
-          apDisplay = 'N/A';
-        }
-        
-        return [
-          site.dbn || 'N/A',
-          site.lcgmsBuildingCode || 'N/A',
-          site.siteName,
-          `${site.buildingAddress || 'N/A'}, ${site.borough || ''} ${site.zipCode || ''}`.trim(),
-          hoursStr || 'N/A',
-          apDisplay
-        ];
-      });
-      
-      // Add table for this program
-      (doc as any).autoTable({
-        head: [headers],
-        body: rows,
-        startY: startY,
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [37, 99, 235], textColor: 255 },
-        margin: { top: 5 },
-        columnStyles: {
-          5: { cellWidth: 'auto', overflow: 'linebreak' } // Assistant Principal column - allow multiline
-        }
-      });
-      
-      startY = (doc as any).lastAutoTable.finalY + 10;
-    });
-    
-    // Save PDF
-    doc.save('district79-sites.pdf');
   };
 
   // Get unique values for filters
@@ -746,7 +591,7 @@ export default function AdminPage() {
     return sortOrder === 'asc' ? comparison : -comparison;
   });
 
-  const sitesWithoutCoords = sites.filter(s => !s.latitude || !s.longitude).length;
+  const sitesWithoutCoords = sites.filter((s) => !isValidLatLng(s.latitude, s.longitude)).length;
   const hasActiveFilters = selectedCategory !== 'all' || selectedBorough !== 'all' || selectedProgram !== 'all' || searchTerm !== '';
 
   // Pagination
@@ -761,12 +606,16 @@ export default function AdminPage() {
     setCurrentPage(1);
   }, [selectedCategory, selectedBorough, selectedProgram, searchTerm, sortBy, sortOrder]);
 
+  const pendingCount = changeRequests.filter((r: any) => r.status === 'pending').length;
+  const adultEdCount = sites.filter((s) => s.category === 'adult-ed').length;
+  const youthCount = sites.filter((s) => s.category === 'youth').length;
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-[50vh] items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-d79-blue" />
+          <p className="text-slate-600">Loading admin...</p>
         </div>
       </div>
     );
@@ -784,10 +633,11 @@ export default function AdminPage() {
   }
 
   return (
-    <div>
-      <div className="max-w-8xl mx-auto px-4 py-8">
+    <div className="bg-slate-50">
+      <div className="page-shell space-y-6 py-8">
         <AdminHeader
-          pendingRequestsCount={changeRequests.filter((r: any) => r.status === 'pending').length}
+          pendingRequestsCount={pendingCount}
+          showChangeRequests={showChangeRequests}
           onToggleChangeRequests={() => {
             setShowChangeRequests(!showChangeRequests);
             if (!showChangeRequests) {
@@ -796,8 +646,28 @@ export default function AdminPage() {
           }}
           onLogout={handleLogout}
         />
-        
-        {/* Change Requests Section */}
+
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="surface-card p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Total sites</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-900">{sites.length}</p>
+          </div>
+          <div className="surface-card p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Adult / Youth</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-900">
+              {adultEdCount} <span className="text-base font-normal text-slate-400">/</span> {youthCount}
+            </p>
+          </div>
+          <div className="surface-card p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Missing coordinates</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-900">{sitesWithoutCoords}</p>
+          </div>
+          <div className="surface-card p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Pending requests</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-900">{pendingCount}</p>
+          </div>
+        </div>
+
         {showChangeRequests && (
           <ChangeRequestsSection
             changeRequests={changeRequests}
@@ -805,43 +675,39 @@ export default function AdminPage() {
             onReview={handleReviewChangeRequest}
           />
         )}
-        
-        <div className="mb-6 flex gap-4 flex-wrap">
+
+        <div className="flex flex-wrap gap-2">
           <Link
             href="/admin/import"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-d79-navy px-3 py-2 text-sm font-medium text-white hover:bg-d79-blue"
           >
-            <Upload className="h-5 w-5 mr-2" />
-            Import CSV with Preview
+            <Upload className="h-4 w-4" />
+            Import CSV with preview
           </Link>
-          
           <button
             onClick={handleNormalizeAddresses}
             disabled={normalizingAddresses}
-            className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {normalizingAddresses ? (
-              <>
-                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                Normalizing...
-              </>
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <>
-                <MapPin className="h-5 w-5 mr-2" />
-                Normalize All Addresses
-              </>
+              <MapPin className="h-4 w-4" />
             )}
+            {normalizingAddresses ? 'Normalizing...' : 'Normalize addresses'}
           </button>
         </div>
 
         {normalizeStatus && (
-          <div className={`mb-4 p-4 rounded-lg ${
-            normalizeStatus.startsWith('✅') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-          }`}>
+          <div
+            className={`rounded-lg px-4 py-3 text-sm ${
+              normalizeStatus.startsWith('✅') ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'
+            }`}
+          >
             {normalizeStatus}
           </div>
         )}
-        
+
         <UploadSection
           onFileUpload={handleFileUpload}
           uploading={uploading}
@@ -877,6 +743,16 @@ export default function AdminPage() {
           hasActiveFilters={hasActiveFilters}
           onGeocodeAll={handleGeocodeAll}
           geocodingAll={geocodingAll}
+          onFillSupervisors={handleFillSupervisors}
+          fillingSupervisors={fillingSupervisors}
+          sitesMissingSupervisors={
+            sites.filter(
+              (s) =>
+                Boolean((s.assistantPrincipal || '').trim()) &&
+                !(s.siteSupervisor || '').trim() &&
+                !(s.siteSupervisorPhone || '').trim()
+            ).length
+          }
           onExportPdf={handleExportPdf}
           onUpdateYouthStatus={handleUpdateYouthStatus}
           onGenerateDescriptionsBulk={handleGenerateDescriptionsBulk}
@@ -885,6 +761,8 @@ export default function AdminPage() {
           onDescriptionCountChange={setDescriptionCount}
           sitesWithoutDescriptions={sites.filter(s => !s.description || s.description.trim() === '').length}
           selectedSitesCount={selectedSites.size}
+          totalShown={sortedSites.length}
+          totalSites={sites.length}
         />
 
         <SitesTable
@@ -906,74 +784,75 @@ export default function AdminPage() {
           allSitesWithoutDescriptions={sortedSites.filter(s => !s.description || s.description.trim() === '').map(s => s._id)}
         />
 
-        {/* Pagination */}
         {totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-between bg-white rounded-lg shadow p-4">
-            <div className="text-sm text-gray-700">
-              Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
-              <span className="font-medium">{Math.min(endIndex, sortedSites.length)}</span> of{' '}
-              <span className="font-medium">{sortedSites.length}</span> sites
-            </div>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-slate-600">
+              Showing <span className="font-medium text-slate-900">{startIndex + 1}</span> to{' '}
+              <span className="font-medium text-slate-900">{Math.min(endIndex, sortedSites.length)}</span> of{' '}
+              <span className="font-medium text-slate-900">{sortedSites.length}</span>
+            </p>
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm disabled:opacity-40"
               >
                 Previous
               </button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`px-3 py-2 border rounded-lg ${
-                        currentPage === pageNum
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-              </div>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`rounded-lg px-3 py-1.5 text-sm ${
+                      currentPage === pageNum
+                        ? 'bg-d79-navy text-white'
+                        : 'border border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
               <button
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 disabled={currentPage === totalPages}
-                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm disabled:opacity-40"
               >
                 Next
               </button>
             </div>
           </div>
         )}
-        
-        {sortedSites.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">
-              {sites.length === 0 
-                ? 'No sites found. Upload a CSV file to get started.'
-                : 'No sites match your filters. Try adjusting your search criteria.'}
-            </p>
+
+        {sortedSites.length === 0 && sites.length > 0 && (
+          <div className="surface-card px-6 py-12 text-center">
+            <p className="text-slate-500">No sites match these filters.</p>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategory('all');
+                setSelectedBorough('all');
+                setSelectedProgram('all');
+                setSearchTerm('');
+              }}
+              className="mt-3 text-sm font-medium text-d79-blue hover:text-d79-navy"
+            >
+              Clear filters
+            </button>
           </div>
         )}
-
       </div>
-      
-      <Footer />
     </div>
   );
 }
-

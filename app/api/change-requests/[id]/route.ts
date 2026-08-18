@@ -61,6 +61,12 @@ export async function PUT(
       if (changeRequest.saturdayHours) {
         siteUpdates.saturdayHours = changeRequest.saturdayHours;
       }
+      if (typeof changeRequest.siteSupervisor === 'string') {
+        siteUpdates.siteSupervisor = changeRequest.siteSupervisor;
+      }
+      if (typeof changeRequest.siteSupervisorPhone === 'string') {
+        siteUpdates.siteSupervisorPhone = changeRequest.siteSupervisorPhone;
+      }
 
       // Update the site with approved changes
       if (Object.keys(siteUpdates).length > 0) {

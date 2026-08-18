@@ -2,16 +2,40 @@ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import https from 'https';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { buildTemplateDescription, descriptionFactsKey } from '@/lib/site-description';
 
 export async function POST(request: Request) {
   try {
-    const { siteName, program, address, borough } = await request.json();
+    const { siteName, program, address, borough, category, daytimeDays, daytimeHours, eveningDays, eveningHours, saturdayHours, mode } = await request.json();
 
     if (!siteName || !program) {
       return NextResponse.json(
         { error: 'Site name and program are required' },
         { status: 400 }
       );
+    }
+
+    const facts = {
+      siteName,
+      program,
+      buildingAddress: address,
+      borough,
+      category,
+      daytimeDays,
+      daytimeHours,
+      eveningDays,
+      eveningHours,
+      saturdayHours,
+    };
+
+    if (mode !== 'ai') {
+      const description = buildTemplateDescription(facts);
+      return NextResponse.json({
+        description,
+        model: 'template',
+        descriptionSource: 'template',
+        descriptionFactsKey: descriptionFactsKey(facts),
+      });
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
@@ -150,7 +174,14 @@ Write the description now:`;
 
     return NextResponse.json({ 
       description,
-      model: model // Return the model used for verification
+      model: model,
+      descriptionSource: 'ai',
+      descriptionFactsKey: descriptionFactsKey({
+        siteName,
+        program,
+        buildingAddress: address,
+        borough,
+      }),
     });
   } catch (error: any) {
     console.error('Error generating description:', error);

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import Footer from '@/components/Footer';
 import { BarChart3, Users, MapPin, TrendingUp, Loader2 } from 'lucide-react';
 
 // Dynamically import charts to avoid SSR issues
@@ -15,7 +14,7 @@ const RechartsBarChart = dynamic(() => Promise.resolve((props: any) => (
       <YAxis />
       <Tooltip />
       <Legend />
-      <Bar dataKey="count" fill="#3B82F6" />
+      <Bar dataKey="count" fill="#003F87" />
     </BarChart>
   </ResponsiveContainer>
 )), { ssr: false });
@@ -139,8 +138,8 @@ export default function AnalyticsPage() {
 
   // Category distribution
   const categoryData = [
-    { name: 'Adult Education', value: adultEdSites, color: '#3B82F6' },
-    { name: 'Youth Programs', value: youthSites, color: '#8B5CF6' },
+    { name: 'Adult Education', value: adultEdSites, color: '#003F87' },
+    { name: 'Youth Programs', value: youthSites, color: '#7C3AED' },
   ];
 
   // Status distribution
@@ -152,10 +151,10 @@ export default function AnalyticsPage() {
 
   if (authLoading || !isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-[50vh] items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
+          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-d79-blue" />
+          <p className="text-slate-600">Loading analytics...</p>
         </div>
       </div>
     );
@@ -163,91 +162,74 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-[50vh] items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading analytics...</p>
+          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-d79-blue" />
+          <p className="text-slate-600">Loading analytics...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
+    <div className="bg-slate-50">
+      <div className="page-shell py-8">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <BarChart3 className="h-8 w-8 text-blue-600" />
-                Analytics Dashboard
-              </h1>
-              <p className="text-gray-600 mt-1">Insights and statistics about District 79 sites</p>
-            </div>
-            <a 
-              href="/home" 
-              className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-              </svg>
-              Back to Directory
-            </a>
-          </div>
+          <h1 className="flex items-center gap-3 text-3xl font-semibold tracking-tight text-d79-navy">
+            <BarChart3 className="h-8 w-8" />
+            Analytics
+          </h1>
+          <p className="mt-1 text-slate-600">Snapshot of open District 79 sites by program, borough, and category.</p>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-blue-500">
+        <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="surface-card border-l-4 border-d79-blue p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Total Sites</p>
-                <p className="text-3xl font-bold text-gray-900">{totalSites}</p>
+                <p className="text-sm text-slate-500">Open sites</p>
+                <p className="text-3xl font-semibold text-slate-900">{totalSites}</p>
               </div>
-              <Users className="h-12 w-12 text-blue-500 opacity-20" />
+              <Users className="h-10 w-10 text-d79-blue/20" />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-purple-500">
+          <div className="surface-card border-l-4 border-violet-500 p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Adult Education</p>
-                <p className="text-3xl font-bold text-gray-900">{adultEdSites}</p>
-                <p className="text-xs text-gray-500 mt-1">{totalSites > 0 ? ((adultEdSites / totalSites) * 100).toFixed(1) : 0}%</p>
+                <p className="text-sm text-slate-500">Adult Education</p>
+                <p className="text-3xl font-semibold text-slate-900">{adultEdSites}</p>
+                <p className="mt-1 text-xs text-slate-500">{totalSites > 0 ? ((adultEdSites / totalSites) * 100).toFixed(1) : 0}%</p>
               </div>
-              <TrendingUp className="h-12 w-12 text-purple-500 opacity-20" />
+              <TrendingUp className="h-10 w-10 text-violet-500/20" />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-pink-500">
+          <div className="surface-card border-l-4 border-fuchsia-500 p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Youth Programs</p>
-                <p className="text-3xl font-bold text-gray-900">{youthSites}</p>
-                <p className="text-xs text-gray-500 mt-1">{totalSites > 0 ? ((youthSites / totalSites) * 100).toFixed(1) : 0}%</p>
+                <p className="text-sm text-slate-500">Youth Programs</p>
+                <p className="text-3xl font-semibold text-slate-900">{youthSites}</p>
+                <p className="mt-1 text-xs text-slate-500">{totalSites > 0 ? ((youthSites / totalSites) * 100).toFixed(1) : 0}%</p>
               </div>
-              <TrendingUp className="h-12 w-12 text-pink-500 opacity-20" />
+              <TrendingUp className="h-10 w-10 text-fuchsia-500/20" />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-green-500">
+          <div className="surface-card border-l-4 border-emerald-500 p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">With Coordinates</p>
-                <p className="text-3xl font-bold text-gray-900">{sitesWithCoordinates}</p>
-                <p className="text-xs text-gray-500 mt-1">{totalSites > 0 ? ((sitesWithCoordinates / totalSites) * 100).toFixed(1) : 0}%</p>
+                <p className="text-sm text-slate-500">With coordinates</p>
+                <p className="text-3xl font-semibold text-slate-900">{sitesWithCoordinates}</p>
+                <p className="mt-1 text-xs text-slate-500">{totalSites > 0 ? ((sitesWithCoordinates / totalSites) * 100).toFixed(1) : 0}%</p>
               </div>
-              <MapPin className="h-12 w-12 text-green-500 opacity-20" />
+              <MapPin className="h-10 w-10 text-emerald-500/20" />
             </div>
           </div>
         </div>
 
-        {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Programs Chart */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Sites by Program (Top 20)</h2>
+        <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="surface-card p-6">
+            <h2 className="mb-4 text-lg font-semibold text-slate-900">Sites by program (top 20)</h2>
             {programData.length > 0 ? (
               <RechartsBarChart data={programData} />
             ) : (
@@ -258,8 +240,8 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Boroughs Chart */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Sites by Borough</h2>
+          <div className="surface-card p-6">
+            <h2 className="mb-4 text-lg font-semibold text-slate-900">Sites by borough</h2>
             {boroughData.length > 0 ? (
               <RechartsBarChart data={boroughData} />
             ) : (
@@ -270,8 +252,8 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Category Distribution */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Category Distribution</h2>
+          <div className="surface-card p-6">
+            <h2 className="mb-4 text-lg font-semibold text-slate-900">Category distribution</h2>
             {categoryData.some(d => d.value > 0) ? (
               <RechartsPieChart data={categoryData} />
             ) : (
@@ -282,8 +264,8 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Status Distribution */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Status Distribution</h2>
+          <div className="surface-card p-6">
+            <h2 className="mb-4 text-lg font-semibold text-slate-900">Status distribution</h2>
             {statusData.some(d => d.value > 0) ? (
               <RechartsPieChart data={statusData} />
             ) : (
@@ -295,26 +277,24 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Additional Statistics */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Additional Statistics</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <p className="text-2xl font-bold text-blue-600">{programData.length}</p>
-              <p className="text-sm text-gray-600 mt-1">Unique Programs</p>
+        <div className="surface-card p-6">
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">Additional statistics</h2>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="rounded-xl bg-d79-sky p-4 text-center">
+              <p className="text-2xl font-semibold text-d79-navy">{programData.length}</p>
+              <p className="mt-1 text-sm text-slate-600">Unique programs</p>
             </div>
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <p className="text-2xl font-bold text-purple-600">{boroughData.length}</p>
-              <p className="text-sm text-gray-600 mt-1">Boroughs/Locations</p>
+            <div className="rounded-xl bg-violet-50 p-4 text-center">
+              <p className="text-2xl font-semibold text-violet-700">{boroughData.length}</p>
+              <p className="mt-1 text-sm text-slate-600">Boroughs / locations</p>
             </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <p className="text-2xl font-bold text-green-600">{totalSites - sitesWithCoordinates}</p>
-              <p className="text-sm text-gray-600 mt-1">Sites Needing Geocoding</p>
+            <div className="rounded-xl bg-emerald-50 p-4 text-center">
+              <p className="text-2xl font-semibold text-emerald-700">{totalSites - sitesWithCoordinates}</p>
+              <p className="mt-1 text-sm text-slate-600">Sites needing geocoding</p>
             </div>
           </div>
         </div>
       </div>
-      
-      <Footer />
     </div>
   );
 }

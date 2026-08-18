@@ -7,9 +7,19 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        d79: {
+          navy: "#003F87",
+          blue: "#0078D4",
+          sky: "#E8F3FC",
+        },
+      },
+      boxShadow: {
+        card: "0 1px 2px rgb(0 63 135 / 0.06), 0 8px 24px rgb(0 63 135 / 0.06)",
+      },
+    },
   },
   plugins: [],
 };
 export default config;
-

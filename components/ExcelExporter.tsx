@@ -1,3 +1,5 @@
+import { parseNamedPhones } from '@/lib/staff';
+
 interface Site {
   _id: string;
   dbn: string;
@@ -12,6 +14,8 @@ interface Site {
   apEmail?: string;
   principal?: string;
   principalEmail?: string;
+  siteSupervisor?: string;
+  siteSupervisorPhone?: string;
   daytimeDays?: string;
   daytimeHours?: string;
   eveningDays?: string;
@@ -31,7 +35,7 @@ export default function ExcelExporter({ sites }: Props) {
     const XLSX = await import('xlsx');
 
     // Headers match PDF
-    const headers = ['DBN', 'LCGMS', 'Site Name', 'Address', 'Hours', 'Assistant Principal'];
+    const headers = ['DBN', 'LCGMS', 'Site Name', 'Address', 'Hours', 'Assistant Principal', 'Site Supervisor'];
 
     const rows = sites.map((site) => {
       const hours: string[] = [];
@@ -60,6 +64,12 @@ export default function ExcelExporter({ sites }: Props) {
 
       const address = `${site.buildingAddress || 'N/A'}, ${site.borough || ''} ${site.zipCode || ''}`.trim();
 
+      const supervisors = parseNamedPhones(site.siteSupervisor, site.siteSupervisorPhone);
+      const supervisorDisplay =
+        supervisors.length > 0
+          ? supervisors.map((s) => [s.name, s.phone].filter(Boolean).join(' - ')).join('\n')
+          : 'N/A';
+
       return [
         site.dbn || 'N/A',
         site.lcgmsBuildingCode || 'N/A',
@@ -67,6 +77,7 @@ export default function ExcelExporter({ sites }: Props) {
         address,
         hoursStr || 'N/A',
         apDisplay,
+        supervisorDisplay,
       ];
     });
 
@@ -77,7 +88,7 @@ export default function ExcelExporter({ sites }: Props) {
   };
 
   return (
-    <button onClick={handleExport} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2 transition-colors">
+    <button onClick={handleExport} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
         <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
       </svg>

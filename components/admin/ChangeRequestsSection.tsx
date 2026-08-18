@@ -21,6 +21,8 @@ interface ChangeRequest {
   eveningDays?: string;
   eveningHours?: string;
   saturdayHours?: string;
+  siteSupervisor?: string;
+  siteSupervisorPhone?: string;
   notes?: string;
 }
 
@@ -39,23 +41,23 @@ export default function ChangeRequestsSection({
 
   if (pendingRequests.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Pending Change Requests</h2>
-        <p className="text-gray-500 text-center py-8">No pending change requests.</p>
+      <div className="surface-card p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Pending change requests</h2>
+        <p className="py-8 text-center text-slate-500">No pending change requests.</p>
       </div>
     );
   }
 
   const hasChanges = (request: ChangeRequest, field: string, currentSite: any) => {
     const requestedValue = (request as any)[field];
-    if (!requestedValue || requestedValue === '') return false;
+    if (requestedValue == null) return false;
     const currentValue = currentSite?.[field] || '';
     return String(requestedValue).trim() !== String(currentValue).trim();
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 mb-8">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Pending Change Requests</h2>
+    <div className="surface-card p-6">
+      <h2 className="mb-4 text-lg font-semibold text-slate-900">Pending change requests</h2>
       
       <div className="space-y-4">
         {pendingRequests
@@ -64,7 +66,7 @@ export default function ChangeRequestsSection({
             const currentSite = sites.find((s: any) => s._id === request.siteId);
             
             return (
-              <div key={request._id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+              <div key={request._id} className="rounded-xl border border-slate-200 p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <h3 className="font-semibold text-gray-900">{request.siteName}</h3>
@@ -136,6 +138,24 @@ export default function ChangeRequestsSection({
                       )}
                     </div>
                   )}
+                  {typeof request.siteSupervisor === 'string' && (
+                    <div className={hasChanges(request, 'siteSupervisor', currentSite) ? 'bg-yellow-100 p-3 rounded-lg border-2 border-yellow-400' : ''}>
+                      <p className="text-xs font-medium text-gray-500">Site Supervisor(s)</p>
+                      <p className="text-sm text-gray-900 font-semibold">{request.siteSupervisor || '—'}</p>
+                      {currentSite?.siteSupervisor && (
+                        <p className="text-xs text-gray-500 mt-1">Current: {currentSite.siteSupervisor}</p>
+                      )}
+                    </div>
+                  )}
+                  {typeof request.siteSupervisorPhone === 'string' && (
+                    <div className={hasChanges(request, 'siteSupervisorPhone', currentSite) ? 'bg-yellow-100 p-3 rounded-lg border-2 border-yellow-400' : ''}>
+                      <p className="text-xs font-medium text-gray-500">Site Supervisor Phone(s)</p>
+                      <p className="text-sm text-gray-900 font-semibold">{request.siteSupervisorPhone || '—'}</p>
+                      {currentSite?.siteSupervisorPhone && (
+                        <p className="text-xs text-gray-500 mt-1">Current: {currentSite.siteSupervisorPhone}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {request.notes && (
@@ -151,7 +171,7 @@ export default function ChangeRequestsSection({
                       const notes = prompt('Rejection reason (optional):');
                       onReview(request._id, 'rejected', notes || undefined);
                     }}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                    className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
                   >
                     <XCircle className="h-4 w-4" />
                     Reject
@@ -162,7 +182,7 @@ export default function ChangeRequestsSection({
                         onReview(request._id, 'approved');
                       }
                     }}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                    className="inline-flex items-center gap-2 rounded-lg bg-d79-navy px-3 py-2 text-sm font-medium text-white hover:bg-d79-blue"
                   >
                     <CheckCircle className="h-4 w-4" />
                     Approve

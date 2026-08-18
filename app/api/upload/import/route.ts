@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import mongodb from '@/lib/mongodb';
 import { parse } from 'csv-parse/sync';
 import { geocodeAddress } from '@/lib/geocode';
+import { reconcileDescription } from '@/lib/site-description';
 import { normalizeNYCAddress } from '@/lib/address-normalize';
 
 export async function POST(request: Request) {
@@ -53,6 +54,8 @@ export async function POST(request: Request) {
       apEmail: trimValue(record['AP Email']),
       principal: trimValue(record.Principal),
       principalEmail: trimValue(record['Principal Email']),
+      siteSupervisor: trimValue(record['Site Supervisor'] || record['Site Supervisors'] || record.Supervisor),
+      siteSupervisorPhone: trimValue(record['Site Supervisor Phone'] || record['Site Supervisors Phone'] || record['Supervisor Phone']),
       newForSY: trimValue(record['New for SY 25-26']),
       daytimeDays: trimValue(record['Daytime Days of Operation'] || record['Days of Operation']),
       daytimeHours: trimValue(record['Daytime Hours of Operation'] || (record['Start Time'] ? `${record['Start Time']} - ${record['End Time']}` : '')),
@@ -96,7 +99,7 @@ export async function POST(request: Request) {
       if (existingSite) {
         // Update existing site, but exclude protected fields
         // Protected fields: latitude, longitude, description (managed separately)
-        const protectedFields = ['latitude', 'longitude', 'description'];
+        const protectedFields = ['latitude', 'longitude', 'description', 'descriptionSource', 'descriptionFactsKey'];
         
         // Create update data excluding protected fields
         const updateData: any = {};
@@ -113,9 +116,7 @@ export async function POST(request: Request) {
         if (existingSite.longitude != null) {
           updateData.longitude = existingSite.longitude;
         }
-        if (existingSite.description != null) {
-          updateData.description = existingSite.description;
-        }
+        Object.assign(updateData, reconcileDescription(existingSite, { ...existingSite, ...csvSite }));
         
         await db.collection('sites').updateOne(
           { _id: existingSite._id },
@@ -125,10 +126,9 @@ export async function POST(request: Request) {
       } else {
         // Insert new site (exclude protected fields - they'll be set separately if needed)
         const newSiteData: any = { ...csvSite };
-        // Don't set protected fields for new sites
         delete newSiteData.latitude;
         delete newSiteData.longitude;
-        delete newSiteData.description;
+        Object.assign(newSiteData, reconcileDescription(undefined, csvSite));
         
         const result = await db.collection('sites').insertOne(newSiteData);
         insertedCount++;
@@ -164,40 +164,35 @@ export async function POST(request: Request) {
       }
     }
 
-    // Optional: Geocode new sites in background (rate limited)
     if (process.env.ENABLE_AUTO_GEOCODE === 'true' && insertedIds.length > 0) {
-      // Create a map of new sites by their index in insertedIds
       const newSites = csvSites.filter((s: any) => {
         const siteNameKey = (s.siteName || '').trim().toLowerCase();
         return siteNameKey && !existingSitesMap.has(siteNameKey);
       });
-      
-      Promise.all(
-        newSites.map(async (site: any, index: number) => {
-          if (site.buildingAddress) {
-            await new Promise(resolve => setTimeout(resolve, index * 1100));
-            
-            const geoResult = await geocodeAddress(
-              site.buildingAddress,
-              site.borough,
-              site.zipCode
-            );
 
-            if (geoResult.latitude && geoResult.longitude && index < insertedIds.length) {
-              const { ObjectId } = await import('mongodb');
-              await db.collection('sites').updateOne(
-                { _id: new ObjectId(insertedIds[index]) },
-                {
-                  $set: {
-                    latitude: geoResult.latitude,
-                    longitude: geoResult.longitude,
-                  },
-                }
-              );
-            }
+      void (async () => {
+        const { ObjectId } = await import('mongodb');
+        for (let index = 0; index < newSites.length; index++) {
+          const site = newSites[index];
+          if (!site.buildingAddress || index >= insertedIds.length) continue;
+          const geoResult = await geocodeAddress(
+            site.buildingAddress,
+            site.borough,
+            site.zipCode
+          );
+          if (geoResult.latitude != null && geoResult.longitude != null) {
+            await db.collection('sites').updateOne(
+              { _id: new ObjectId(insertedIds[index]) },
+              {
+                $set: {
+                  latitude: geoResult.latitude,
+                  longitude: geoResult.longitude,
+                },
+              }
+            );
           }
-        })
-      ).catch(err => console.error('Background geocoding error:', err));
+        }
+      })().catch((err) => console.error('Background geocoding error:', err));
     }
     
     return NextResponse.json({ 

@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { parseLatLng } from '@/lib/coordinates';
 
 export interface Site {
   _id: string;
@@ -26,39 +27,54 @@ interface SiteMapProps {
   mapboxToken: string;
 }
 
-// Color palette for 17 different programs
-const PROGRAM_COLORS = [
-  '#FF6B6B', // Red
-  '#4ECDC4', // Turquoise
-  '#45B7D1', // Blue
-  '#FFA07A', // Light Salmon
-  '#98D8C8', // Mint
-  '#F7DC6F', // Yellow
-  '#BB8FCE', // Purple
-  '#85C1E2', // Sky Blue
-  '#F8B739', // Orange
-  '#52BE80', // Green
-  '#EC7063', // Coral
-  '#5DADE2', // Light Blue
-  '#F1948A', // Pink
-  '#73C6B6', // Teal
-  '#F39C12', // Dark Orange
-  '#58D68D', // Light Green
-  '#AF7AC5', // Lavender
-];
-
-// Generate consistent color for program
-const getProgramColor = (program: string): string => {
-  if (!program) return PROGRAM_COLORS[0];
-  
-  let hash = 0;
-  for (let i = 0; i < program.length; i++) {
-    hash = program.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  
-  const index = Math.abs(hash) % PROGRAM_COLORS.length;
-  return PROGRAM_COLORS[index];
+const CATEGORY_COLOR: Record<string, string> = {
+  'adult-ed': '#003F87',
+  youth: '#7C3AED',
 };
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function popupHtml(props: {
+  id: string;
+  siteName: string;
+  program: string;
+  buildingAddress?: string;
+  borough?: string;
+  zipCode?: string;
+  businessPhone?: string;
+  category: string;
+  color: string;
+}) {
+  const address = [props.buildingAddress, props.borough, props.zipCode].filter(Boolean).join(', ');
+  const isAdult = props.category === 'adult-ed';
+  return `
+    <div class="d79-popup">
+      <div class="d79-popup-title">
+        <span class="d79-popup-dot" style="background:${props.color}"></span>
+        <strong>${escapeHtml(props.siteName)}</strong>
+      </div>
+      <p class="d79-popup-program">${escapeHtml(props.program || 'N/A')}</p>
+      ${address ? `<p class="d79-popup-meta">${escapeHtml(address)}</p>` : ''}
+      ${
+        props.businessPhone
+          ? `<p class="d79-popup-meta"><a href="tel:${escapeHtml(props.businessPhone)}">${escapeHtml(props.businessPhone)}</a></p>`
+          : ''
+      }
+      <div class="d79-popup-footer">
+        <span class="d79-popup-badge" style="${
+          isAdult ? 'background:#E8F3FC;color:#003F87' : 'background:#F3E8FF;color:#6B21A8'
+        }">${isAdult ? 'Adult Ed' : 'Youth'}</span>
+        <a href="/site/${escapeHtml(props.id)}">View details →</a>
+      </div>
+    </div>
+  `;
+}
 
 export default function SiteMap({
   sites,
@@ -71,24 +87,17 @@ export default function SiteMap({
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Filter sites with valid coordinates
   const validSites = useMemo(
     () =>
-      sites.filter(
-        (site) =>
-          site.latitude != null &&
-          site.longitude != null &&
-          !isNaN(site.latitude) &&
-          !isNaN(site.longitude) &&
-          isFinite(site.latitude) &&
-          isFinite(site.longitude)
-      ),
+      sites.flatMap((site) => {
+        const coords = parseLatLng(site);
+        return coords ? [{ ...site, ...coords }] : [];
+      }),
     [sites]
   );
 
-  // Convert sites to GeoJSON format
-  const geoJsonData = useMemo(() => {
-    return {
+  const geoJsonData = useMemo(
+    () => ({
       type: 'FeatureCollection' as const,
       features: validSites.map((site) => ({
         type: 'Feature' as const,
@@ -101,54 +110,58 @@ export default function SiteMap({
           zipCode: site.zipCode || '',
           businessPhone: site.businessPhone || '',
           category: site.category || 'adult-ed',
-          color: getProgramColor(site.program || ''),
+          color: CATEGORY_COLOR[site.category] || CATEGORY_COLOR['adult-ed'],
         },
         geometry: {
           type: 'Point' as const,
-          coordinates: [site.longitude!, site.latitude!],
+          coordinates: [site.longitude, site.latitude],
         },
       })),
-    };
-  }, [validSites]);
+    }),
+    [validSites]
+  );
 
-  // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current || !mapboxToken) return;
 
     mapboxgl.accessToken = mapboxToken;
-
-    // Initialize map with NYC center
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/light-v11',
-      center: [-74.0060, 40.7128],
+      center: [-74.006, 40.7128],
       zoom: 10,
+      minZoom: 6,
+      maxZoom: 16,
+      projection: 'mercator',
     });
 
-    // Add navigation controls
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    map.current.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+    map.current.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+    map.current.addControl(
+      new mapboxgl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: true },
+        trackUserLocation: false,
+      }),
+      'top-right'
+    );
 
     map.current.on('load', () => {
+      map.current?.resize();
       setIsLoaded(true);
     });
 
-    // Cleanup
     return () => {
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
-      }
+      popupRef.current?.remove();
+      map.current?.remove();
+      map.current = null;
       setIsLoaded(false);
     };
   }, [mapboxToken]);
 
-  // Update map source and layers when data changes
   useEffect(() => {
     if (!map.current || !isLoaded) return;
-
     const mapInstance = map.current;
 
-    // Remove existing source and layers if they exist
     if (mapInstance.getSource('sites')) {
       if (mapInstance.getLayer('clusters')) mapInstance.removeLayer('clusters');
       if (mapInstance.getLayer('cluster-count')) mapInstance.removeLayer('cluster-count');
@@ -156,16 +169,14 @@ export default function SiteMap({
       mapInstance.removeSource('sites');
     }
 
-    // Add GeoJSON source with clustering
     mapInstance.addSource('sites', {
       type: 'geojson',
       data: geoJsonData,
       cluster: true,
-      clusterMaxZoom: 14, // Max zoom to cluster points
-      clusterRadius: 50, // Radius of each cluster
+      clusterMaxZoom: 14,
+      clusterRadius: 50,
     });
 
-    // Add cluster circles layer
     mapInstance.addLayer({
       id: 'clusters',
       type: 'circle',
@@ -175,27 +186,18 @@ export default function SiteMap({
         'circle-color': [
           'step',
           ['get', 'point_count'],
-          '#51bbd6',
-          100,
-          '#f1f075',
-          750,
-          '#f28cb1',
+          '#0078D4',
+          25,
+          '#003F87',
+          75,
+          '#002A5C',
         ],
-        'circle-radius': [
-          'step',
-          ['get', 'point_count'],
-          20,
-          100,
-          30,
-          750,
-          40,
-        ],
+        'circle-radius': ['step', ['get', 'point_count'], 18, 25, 24, 75, 32],
         'circle-stroke-width': 2,
-        'circle-stroke-color': '#fff',
+        'circle-stroke-color': '#ffffff',
       },
     });
 
-    // Add cluster count labels
     mapInstance.addLayer({
       id: 'cluster-count',
       type: 'symbol',
@@ -206,12 +208,9 @@ export default function SiteMap({
         'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
         'text-size': 12,
       },
-      paint: {
-        'text-color': '#ffffff',
-      },
+      paint: { 'text-color': '#ffffff' },
     });
 
-    // Add individual markers layer with program colors
     mapInstance.addLayer({
       id: 'unclustered-point',
       type: 'circle',
@@ -225,259 +224,141 @@ export default function SiteMap({
       },
     });
 
-    // Click handler for clusters
-    mapInstance.on('click', 'clusters', (e) => {
-      const features = mapInstance.queryRenderedFeatures(e.point, {
-        layers: ['clusters'],
-      });
-      const clusterId = features[0].properties?.cluster_id;
-      const source = mapInstance.getSource('sites') as mapboxgl.GeoJSONSource;
-      
-      source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-        if (err) return;
-
-        mapInstance.easeTo({
-          center: (e.lngLat as any),
-          zoom: zoom as number,
-        });
-      });
-    });
-
-    // Click handler for individual markers
-    mapInstance.on('click', 'unclustered-point', (e) => {
-      if (!e.features || e.features.length === 0) return;
-      
-      const feature = e.features[0];
-      const props = feature.properties;
-      if (!props) return;
-
-      const coordinates = (feature.geometry as GeoJSON.Point).coordinates;
-      
-      // Close existing popup
-      if (popupRef.current) {
-        popupRef.current.remove();
-      }
-
-      // Create enhanced popup content
-      const popupContent = document.createElement('div');
-      popupContent.className = 'popup-content';
-      popupContent.style.cssText = 'min-width: 250px; padding: 0;';
-      popupContent.innerHTML = `
-        <div style="padding: 12px;">
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-            <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${props.color}; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
-            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #111827;">${props.siteName}</h3>
-          </div>
-          <p style="margin: 0 0 8px 0; font-size: 14px; color: #4B5563; font-weight: 500;">${props.program || 'N/A'}</p>
-          ${
-            props.buildingAddress
-              ? `<div style="margin-bottom: 6px; font-size: 13px; color: #6B7280;">
-                  <svg style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
-                  </svg>
-                  ${props.buildingAddress}${props.borough ? `, ${props.borough}` : ''}${props.zipCode ? ` ${props.zipCode}` : ''}
-                </div>`
-              : ''
-          }
-          ${
-            props.businessPhone
-              ? `<div style="margin-bottom: 6px; font-size: 13px; color: #6B7280;">
-                  <svg style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
-                  </svg>
-                  <a href="tel:${props.businessPhone}" style="color: #2563EB; text-decoration: none;">${props.businessPhone}</a>
-                </div>`
-              : ''
-          }
-          <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <span style="font-size: 11px; padding: 4px 8px; border-radius: 12px; font-weight: 500; display: inline-block; ${
-              props.category === 'adult-ed'
-                ? 'background-color: #DBEAFE; color: #1E40AF;'
-                : 'background-color: #F3E8FF; color: #6B21A8;'
-            }">
-              ${props.category === 'adult-ed' ? 'Adult Ed' : 'Youth'}
-            </span>
-            <a href="/site/${props.id}" style="font-size: 12px; color: #2563EB; text-decoration: none; font-weight: 500; padding: 4px 0;" onMouseOver="this.style.textDecoration='underline'" onMouseOut="this.style.textDecoration='none'">
-              View Details →
-            </a>
-          </div>
-        </div>
-      `;
-
-      // Create and show popup
+    const openPopup = (props: Record<string, string>, coordinates: [number, number]) => {
+      popupRef.current?.remove();
       const popup = new mapboxgl.Popup({
-        offset: 25,
+        offset: 18,
         closeButton: true,
         closeOnClick: false,
         className: 'site-popup',
       })
-        .setLngLat([coordinates[0], coordinates[1]])
-        .setDOMContent(popupContent)
+        .setLngLat(coordinates)
+        .setHTML(popupHtml(props as never))
         .addTo(mapInstance);
-
       popupRef.current = popup;
+    };
 
-      // Callback for site selection
-      if (onSiteSelect) {
-        onSiteSelect(props.id);
-      }
+    const onClusterClick = (e: mapboxgl.MapMouseEvent) => {
+      const features = mapInstance.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+      const clusterId = features[0]?.properties?.cluster_id;
+      const source = mapInstance.getSource('sites') as mapboxgl.GeoJSONSource;
+      source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+        if (err || zoom == null) return;
+        mapInstance.easeTo({ center: e.lngLat, zoom });
+      });
+    };
 
-      // Fly to marker
+    const onPointClick = (e: mapboxgl.MapMouseEvent) => {
+      const feature = e.features?.[0];
+      if (!feature?.properties) return;
+      const coordinates = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
+      openPopup(feature.properties, coordinates);
+      onSiteSelect?.(feature.properties.id);
+      mapInstance.flyTo({ center: coordinates, zoom: 14, duration: 500 });
+    };
+
+    mapInstance.on('click', 'clusters', onClusterClick);
+    mapInstance.on('click', 'unclustered-point', onPointClick);
+
+    const pointer = () => {
+      mapInstance.getCanvas().style.cursor = 'pointer';
+    };
+    const reset = () => {
+      mapInstance.getCanvas().style.cursor = '';
+    };
+    mapInstance.on('mouseenter', 'clusters', pointer);
+    mapInstance.on('mouseleave', 'clusters', reset);
+    mapInstance.on('mouseenter', 'unclustered-point', pointer);
+    mapInstance.on('mouseleave', 'unclustered-point', reset);
+
+    if (validSites.length === 1) {
       mapInstance.flyTo({
-        center: [coordinates[0], coordinates[1]],
-        zoom: 15,
-        duration: 500,
+        center: [validSites[0].longitude, validSites[0].latitude],
+        zoom: 13,
+        duration: 800,
       });
-    });
-
-    // Change cursor on hover
-    mapInstance.on('mouseenter', 'clusters', () => {
-      mapInstance.getCanvas().style.cursor = 'pointer';
-    });
-    mapInstance.on('mouseleave', 'clusters', () => {
-      mapInstance.getCanvas().style.cursor = '';
-    });
-
-    mapInstance.on('mouseenter', 'unclustered-point', () => {
-      mapInstance.getCanvas().style.cursor = 'pointer';
-    });
-    mapInstance.on('mouseleave', 'unclustered-point', () => {
-      mapInstance.getCanvas().style.cursor = '';
-    });
-
-    // Fit bounds to all sites if we have them
-    if (validSites.length > 0) {
+    } else if (validSites.length > 1) {
       const bounds = new mapboxgl.LngLatBounds();
-      validSites.forEach((site) => {
-        if (site.latitude && site.longitude) {
-          bounds.extend([site.longitude, site.latitude]);
-        }
-      });
-      
-      if (validSites.length === 1) {
-        mapInstance.flyTo({
-          center: [validSites[0].longitude!, validSites[0].latitude!],
-          zoom: 14,
-          duration: 1000,
-        });
+      validSites.forEach((site) => bounds.extend([site.longitude, site.latitude]));
+      const sw = bounds.getSouthWest();
+      const ne = bounds.getNorthEast();
+      const tooWide = ne.lat - sw.lat > 4 || Math.abs(ne.lng - sw.lng) > 4;
+      if (tooWide) {
+        mapInstance.jumpTo({ center: [-74.006, 40.7128], zoom: 10 });
       } else {
-        mapInstance.fitBounds(bounds, {
-          padding: 50,
-          duration: 1000,
-        });
+        mapInstance.fitBounds(bounds, { padding: 60, duration: 800, maxZoom: 13 });
       }
     }
+
+    return () => {
+      mapInstance.off('click', 'clusters', onClusterClick);
+      mapInstance.off('click', 'unclustered-point', onPointClick);
+      mapInstance.off('mouseenter', 'clusters', pointer);
+      mapInstance.off('mouseleave', 'clusters', reset);
+      mapInstance.off('mouseenter', 'unclustered-point', pointer);
+      mapInstance.off('mouseleave', 'unclustered-point', reset);
+    };
   }, [geoJsonData, isLoaded, onSiteSelect, validSites]);
 
-  // Handle selected site changes
   useEffect(() => {
     if (!map.current || !isLoaded || !selectedSite) return;
-
     const site = validSites.find((s) => s._id === selectedSite);
-    if (site && site.latitude && site.longitude) {
-      // Find the feature and trigger popup
-      const feature = geoJsonData.features.find((f) => f.properties.id === selectedSite);
-      if (feature) {
-        // Close existing popup
-        if (popupRef.current) {
-          popupRef.current.remove();
-        }
+    if (!site?.latitude || !site.longitude) return;
 
-        // Create popup (reuse the same logic)
-        const props = feature.properties;
-        const coordinates = feature.geometry.coordinates;
+    const feature = geoJsonData.features.find((f) => f.properties.id === selectedSite);
+    if (!feature) return;
 
-        const popupContent = document.createElement('div');
-        popupContent.className = 'popup-content';
-        popupContent.style.cssText = 'min-width: 250px; padding: 0;';
-        popupContent.innerHTML = `
-          <div style="padding: 12px;">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-              <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${props.color}; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
-              <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #111827;">${props.siteName}</h3>
-            </div>
-            <p style="margin: 0 0 8px 0; font-size: 14px; color: #4B5563; font-weight: 500;">${props.program || 'N/A'}</p>
-            ${
-              props.buildingAddress
-                ? `<div style="margin-bottom: 6px; font-size: 13px; color: #6B7280;">
-                    <svg style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
-                    </svg>
-                    ${props.buildingAddress}${props.borough ? `, ${props.borough}` : ''}${props.zipCode ? ` ${props.zipCode}` : ''}
-                  </div>`
-                : ''
-            }
-            ${
-              props.businessPhone
-                ? `<div style="margin-bottom: 6px; font-size: 13px; color: #6B7280;">
-                    <svg style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
-                    </svg>
-                    <a href="tel:${props.businessPhone}" style="color: #2563EB; text-decoration: none;">${props.businessPhone}</a>
-                  </div>`
-                : ''
-            }
-            <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <span style="font-size: 11px; padding: 4px 8px; border-radius: 12px; font-weight: 500; display: inline-block; ${
-                props.category === 'adult-ed'
-                  ? 'background-color: #DBEAFE; color: #1E40AF;'
-                  : 'background-color: #F3E8FF; color: #6B21A8;'
-              }">
-                ${props.category === 'adult-ed' ? 'Adult Ed' : 'Youth'}
-              </span>
-              <a href="/site/${props.id}" style="font-size: 12px; color: #2563EB; text-decoration: none; font-weight: 500; padding: 4px 0;" onMouseOver="this.style.textDecoration='underline'" onMouseOut="this.style.textDecoration='none'">
-                View Details →
-              </a>
-            </div>
-          </div>
-        `;
+    popupRef.current?.remove();
+    const popup = new mapboxgl.Popup({
+      offset: 18,
+      closeButton: true,
+      closeOnClick: false,
+      className: 'site-popup',
+    })
+      .setLngLat(feature.geometry.coordinates as [number, number])
+      .setHTML(popupHtml(feature.properties))
+      .addTo(map.current);
+    popupRef.current = popup;
 
-        const popup = new mapboxgl.Popup({
-          offset: 25,
-          closeButton: true,
-          closeOnClick: false,
-        })
-          .setLngLat([coordinates[0], coordinates[1]])
-          .setDOMContent(popupContent)
-          .addTo(map.current);
-
-        popupRef.current = popup;
-      }
-
-      map.current.flyTo({
-        center: [site.longitude, site.latitude],
-        zoom: 15,
-        duration: 500,
-      });
-    }
+    map.current.flyTo({
+      center: [site.longitude, site.latitude],
+      zoom: 14,
+      duration: 500,
+    });
   }, [selectedSite, validSites, isLoaded, geoJsonData]);
 
   if (!mapboxToken) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-100">
-        <div className="text-center">
-          <p className="text-red-600">Mapbox token is required</p>
-        </div>
+      <div className="flex h-full items-center justify-center bg-slate-100">
+        <p className="text-red-600">Mapbox token is required</p>
       </div>
     );
   }
 
   return (
     <>
-      <div ref={mapContainer} className="h-full w-full" style={{ minHeight: '400px' }} />
+      <div ref={mapContainer} className="h-full w-full" />
       <style jsx global>{`
         .site-popup .mapboxgl-popup-content {
-          border-radius: 8px;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          border-radius: 12px;
+          padding: 0;
+          box-shadow: 0 8px 24px rgb(0 63 135 / 0.12);
         }
         .site-popup .mapboxgl-popup-close-button {
-          font-size: 20px;
-          color: #6B7280;
-          padding: 4px 8px;
+          font-size: 18px;
+          color: #64748b;
+          padding: 6px 10px;
         }
-        .site-popup .mapboxgl-popup-close-button:hover {
-          color: #111827;
-        }
+        .d79-popup { padding: 14px 16px 12px; min-width: 220px; }
+        .d79-popup-title { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+        .d79-popup-dot { width: 10px; height: 10px; border-radius: 99px; margin-top: 5px; flex-shrink: 0; }
+        .d79-popup-title strong { font-size: 15px; color: #0f172a; line-height: 1.3; }
+        .d79-popup-program { margin: 0 0 6px; font-size: 13px; color: #334155; }
+        .d79-popup-meta { margin: 0 0 4px; font-size: 12px; color: #64748b; }
+        .d79-popup-meta a { color: #0078D4; }
+        .d79-popup-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+        .d79-popup-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+        .d79-popup-footer a { font-size: 12px; font-weight: 600; color: #003F87; text-decoration: none; }
       `}</style>
     </>
   );
